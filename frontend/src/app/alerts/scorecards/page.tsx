@@ -9,6 +9,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertPageLayout } from '@/components/alert-page-layout';
 import { api } from '@/lib/api';
+import { AlertFiltersUI } from '@/components/alert-filters';
+import { type AlertFilters, applyFilters } from '@/lib/filters';
 
 interface Alert {
   id: string;
@@ -20,6 +22,7 @@ interface Alert {
 
 export default function ScorecardAlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [filters, setFilters] = useState<AlertFilters>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +40,8 @@ export default function ScorecardAlertsPage() {
     }
   };
 
+  const filteredAlerts = applyFilters(alerts, filters);
+
   return (
     <AlertPageLayout
       title="Module 2: Scorecard Accountability"
@@ -44,6 +49,18 @@ export default function ScorecardAlertsPage() {
       icon={FileCheck}
       iconColor="bg-blue-500/10 text-blue-600"
     >
+      {!loading && alerts.length > 0 && (
+        <Card className="mb-4 border-slate-200/80">
+          <CardContent className="pt-4">
+            <AlertFiltersUI
+              alerts={alerts}
+              filters={filters}
+              onFiltersChange={setFilters}
+              typeFilter="scorecard"
+            />
+          </CardContent>
+        </Card>
+      )}
       {loading ? (
         <Card>
           <CardContent className="p-8">
@@ -53,10 +70,14 @@ export default function ScorecardAlertsPage() {
             </div>
           </CardContent>
         </Card>
-      ) : alerts.length === 0 ? (
+      ) : filteredAlerts.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-muted-foreground">No scorecard alerts. Run a refresh to sync.</p>
+            <p className="text-muted-foreground">
+              {alerts.length === 0
+                ? 'No scorecard alerts. Run a refresh to sync.'
+                : 'No alerts match your filters. Try adjusting filters.'}
+            </p>
             <Link href="/" className="mt-4">
               <Button variant="outline" size="sm" className="transition-all duration-200 hover:scale-[1.02]">
                 Refresh alerts from dashboard
@@ -92,7 +113,7 @@ export default function ScorecardAlertsPage() {
               </thead>
               <tbody className="divide-y divide-border bg-card">
                 <AnimatePresence mode="popLayout">
-                  {alerts.map((a, i) => (
+                  {filteredAlerts.map((a, i) => (
                     <motion.tr
                       key={a.id}
                       initial={{ opacity: 0, x: -8 }}

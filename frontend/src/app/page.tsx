@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { AlertFiltersUI } from '@/components/alert-filters';
+import { type AlertFilters, applyFilters, hasActiveFilters } from '@/lib/filters';
 
 interface AlertCounts {
   stalled: number;
@@ -65,14 +67,33 @@ const moduleCards = [
   },
 ];
 
+interface Alert {
+  id: string;
+  type: string;
+  severity: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
 export default function Home() {
   const [counts, setCounts] = useState<AlertCounts>({ stalled: 0, scorecard: 0, referral: 0 });
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [filters, setFilters] = useState<AlertFilters>({});
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryResponse, setQueryResponse] = useState<string | null>(null);
+  const [mode, setMode] = useState<'ai' | 'filters'>('ai');
 
   const autoRefreshDone = useRef(false);
+
+  const filteredAlerts = hasActiveFilters(filters) ? applyFilters(alerts, filters) : alerts;
+  const filteredCounts: AlertCounts = {
+    stalled: filteredAlerts.filter((a) => a.type === 'stalled').length,
+    scorecard: filteredAlerts.filter((a) => a.type === 'scorecard').length,
+    referral: filteredAlerts.filter((a) => a.type === 'referral').length,
+  };
+  const displayCounts = hasActiveFilters(filters) ? filteredCounts : counts;
 
   useEffect(() => {
     fetchCounts();
@@ -97,10 +118,13 @@ export default function Home() {
     try {
       const data = await api.getAlerts();
       if (data.success && Array.isArray(data.data)) {
-        const stalled = data.data.filter((a: { type: string }) => a.type === 'stalled').length;
-        const scorecard = data.data.filter((a: { type: string }) => a.type === 'scorecard').length;
-        const referral = data.data.filter((a: { type: string }) => a.type === 'referral').length;
-        setCounts({ stalled, scorecard, referral });
+        const list = data.data as Alert[];
+        setAlerts(list);
+        setCounts({
+          stalled: list.filter((a) => a.type === 'stalled').length,
+          scorecard: list.filter((a) => a.type === 'scorecard').length,
+          referral: list.filter((a) => a.type === 'referral').length,
+        });
       }
     } catch (err) {
       console.error(err);
@@ -224,47 +248,100 @@ export default function Home() {
           animate="show"
           className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
         >
-          {/* Agent query - natural language task input */}
+          {/* Toggle: AI Query or Manual Filters */}
           <motion.div variants={item} className="sm:col-span-2 lg:col-span-3">
-            <Card className="border-2 border-indigo-200/60 bg-gradient-to-br from-indigo-50/50 to-white">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Ask the TA Agent</CardTitle>
-              <CardDescription>
-                Type a question or task. The agent will fetch pipeline data and use AI to answer.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. Show me stalled referrals, Who's in the offer stage?, Summarize pipeline alerts"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAgentQuery()}
-                  className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  disabled={queryLoading}
-                />
-                <Button
-                  onClick={handleAgentQuery}
-                  disabled={queryLoading || !query.trim()}
-                  className="gap-2"
-                >
-                  <Send className={cn('h-4 w-4', queryLoading && 'animate-pulse')} />
-                  {queryLoading ? 'Thinking...' : 'Ask'}
-                </Button>
-              </div>
-              {queryResponse && (
-                <div className="rounded-lg border bg-muted/30 p-4 text-sm whitespace-pre-wrap">
-                  {queryResponse}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            <div className="mb-3 flex rounded-lg border border-input bg-muted/30 p-1 w-fit">
+              <button
+                type="button"
+                onClick={() => setMode('ai')}
+                className={cn(
+                  'rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                  mode === 'ai'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                AI Query
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('filters')}
+                className={cn(
+                  'rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                  mode === 'filters'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Manual Filters
+              </button>
+            </div>
+
+            {mode === 'ai' && (
+              <Card className="border-2 border-indigo-200/60 bg-gradient-to-br from-indigo-50/50 to-white">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Ask the TA Agent</CardTitle>
+                  <CardDescription>
+                    Type a question or task. The agent will fetch pipeline data and use AI to answer.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. Show me stalled referrals, Who's in the offer stage?, Summarize pipeline alerts"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAgentQuery()}
+                      className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      disabled={queryLoading}
+                    />
+                    <Button
+                      onClick={handleAgentQuery}
+                      disabled={queryLoading || !query.trim()}
+                      className="gap-2"
+                    >
+                      <Send className={cn('h-4 w-4', queryLoading && 'animate-pulse')} />
+                      {queryLoading ? 'Thinking...' : 'Ask'}
+                    </Button>
+                  </div>
+                  {queryResponse && (
+                    <div className="rounded-lg border bg-muted/30 p-4 text-sm whitespace-pre-wrap">
+                      {queryResponse}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {mode === 'filters' && (
+              <Card className="border border-slate-200/80 bg-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Manual filters</CardTitle>
+                  <CardDescription>
+                    Filter alerts by recruiter, candidate, job, stage, and more. Options are derived from your data.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AlertFiltersUI
+                    alerts={alerts}
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    className="pt-1"
+                  />
+                  {hasActiveFilters(filters) && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Showing {filteredAlerts.length} of {alerts.length} alerts
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </motion.div>
 
           {moduleCards.map((card) => {
             const Icon = card.icon;
-            const count = counts[card.type];
+            const count = displayCounts[card.type];
 
             return (
               <motion.div key={card.type} variants={item}>
