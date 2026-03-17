@@ -8,8 +8,12 @@ const router = Router();
 router.get('/test', async (req, res) => {
   try {
     const greenhouse = getGreenhouseService();
-    const ok = await greenhouse.testConnection();
-    res.json({ success: ok, message: ok ? 'Greenhouse connected' : 'Connection failed' });
+    const result = await greenhouse.testConnection();
+    res.json({
+      success: result.ok,
+      message: result.ok ? 'Greenhouse connected' : (result.error || 'Connection failed'),
+      error: result.error,
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -57,17 +61,19 @@ router.get('/sync', async (req, res) => {
 
     const jobIds = new Set(jobsData.map((j) => j.id));
     for (const a of applicationsData) {
-      if (!jobIds.has(a.job_id)) continue;
+      const jobId = a.job_id ?? (Array.isArray(a.jobs) && a.jobs[0] ? a.jobs[0].id : undefined);
+      if (jobId == null || !jobIds.has(jobId)) continue;
+      const enteredAt = a.last_activity_at || a.updated_at || a.applied_at;
       await db
         .insert(applications)
         .values({
           id: a.id,
-          jobId: a.job_id,
+          jobId,
           candidateId: a.candidate_id,
           stageName: a.current_stage?.name,
           status: a.status,
           referrerId: a.referrer?.id,
-          enteredAt: a.last_activity_at ? new Date(a.last_activity_at) : new Date(a.updated_at),
+          enteredAt: enteredAt ? new Date(enteredAt) : new Date(),
         })
         .onConflictDoUpdate({
           target: applications.id,
@@ -75,7 +81,7 @@ router.get('/sync', async (req, res) => {
             stageName: a.current_stage?.name,
             status: a.status,
             referrerId: a.referrer?.id,
-            enteredAt: a.last_activity_at ? new Date(a.last_activity_at) : new Date(a.updated_at),
+            enteredAt: new Date(enteredAt || Date.now()),
             updatedAt: new Date(),
           },
         });

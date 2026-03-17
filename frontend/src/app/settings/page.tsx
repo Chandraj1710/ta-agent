@@ -59,9 +59,11 @@ export default function SettingsPage() {
   const [temperature, setTemperature] = useState<number>(0.7);
   const [greenhouseApiKey, setGreenhouseApiKey] = useState<string>('');
   const [greenhouseConfigured, setGreenhouseConfigured] = useState(false);
+  const [greenhouseMasked, setGreenhouseMasked] = useState<string>('');
   const [greenhouseSaving, setGreenhouseSaving] = useState(false);
   const [greenhouseTesting, setGreenhouseTesting] = useState(false);
   const [greenhouseTestResult, setGreenhouseTestResult] = useState<'success' | 'error' | null>(null);
+  const [greenhouseErrorMsg, setGreenhouseErrorMsg] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -88,7 +90,10 @@ export default function SettingsPage() {
   const fetchGreenhouseStatus = async () => {
     try {
       const data = await api.getSettingsGreenhouse();
-      if (data.success && data.data?.configured) setGreenhouseConfigured(true);
+      if (data.success && data.data) {
+        if (data.data.configured) setGreenhouseConfigured(true);
+        if (data.data.masked) setGreenhouseMasked(data.data.masked);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -99,12 +104,17 @@ export default function SettingsPage() {
     setGreenhouseSaving(true);
     setGreenhouseTestResult(null);
     try {
-      const data = await api.postSettingsGreenhouse({ apiKey: greenhouseApiKey.trim() });
+      const data = (await api.postSettingsGreenhouse({ apiKey: greenhouseApiKey.trim() })) as {
+        success: boolean;
+        data?: { masked?: string };
+        error?: string;
+      };
       if (data.success) {
         setGreenhouseConfigured(true);
-        alert('✅ Greenhouse API key saved! You can now refresh alerts on the dashboard.');
+        if (data.data?.masked) setGreenhouseMasked(data.data.masked);
+        setGreenhouseApiKey('');
       } else {
-        alert('❌ Failed to save');
+        alert('❌ Failed to save: ' + (data.error || 'Unknown error'));
       }
     } catch (e) {
       console.error(e);
@@ -116,22 +126,35 @@ export default function SettingsPage() {
 
   const handleTestGreenhouse = async () => {
     const key = greenhouseApiKey.trim();
-    if (!key) {
+    if (!key && !greenhouseConfigured) {
       alert('Enter your Greenhouse API key first');
       return;
     }
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     setGreenhouseTesting(true);
     setGreenhouseTestResult(null);
+    setGreenhouseErrorMsg('');
     try {
-      const data = await api.postSettingsGreenhouseTest({ apiKey: key });
+      const data = (await api.postSettingsGreenhouseTest(key ? { apiKey: key } : { apiKey: '' })) as {
+        success: boolean;
+        error?: string;
+        message?: string;
+      };
       setGreenhouseTestResult(data.success ? 'success' : 'error');
+      setGreenhouseErrorMsg(data.error || data.message || '');
       if (data.success) {
         setGreenhouseConfigured(true);
-        setTimeout(() => setGreenhouseTestResult(null), 3000);
+        setGreenhouseMasked(key.length >= 4 ? '***' + key.slice(-4) : '***');
+        setTimeout(() => {
+          setGreenhouseTestResult(null);
+          setGreenhouseErrorMsg('');
+        }, 3000);
       }
     } catch (e) {
       console.error(e);
       setGreenhouseTestResult('error');
+      const errMsg = e instanceof Error ? e.message : 'Network or request failed';
+      setGreenhouseErrorMsg(errMsg.includes('fetch') || errMsg.includes('Failed') ? `${errMsg} (Is backend running on ${apiUrl}?)` : errMsg);
     } finally {
       setGreenhouseTesting(false);
     }
@@ -461,7 +484,7 @@ export default function SettingsPage() {
                 Greenhouse API Key
                 {greenhouseConfigured && (
                   <Badge variant="outline" className="ml-2 border-emerald-300 bg-emerald-50 text-emerald-700">
-                    Configured
+                    Configured {greenhouseMasked && `(${greenhouseMasked})`}
                   </Badge>
                 )}
               </CardTitle>
@@ -475,13 +498,13 @@ export default function SettingsPage() {
                   type="password"
                   value={greenhouseApiKey}
                   onChange={(e) => setGreenhouseApiKey(e.target.value)}
-                  placeholder="Enter your Greenhouse API key"
+                  placeholder={greenhouseConfigured ? 'Enter new key to replace' : 'Enter your Greenhouse API key'}
                   className="flex-1 transition-all duration-200 focus:ring-2"
                 />
                 <Button
                   variant="outline"
                   onClick={handleTestGreenhouse}
-                  disabled={greenhouseTesting || !greenhouseApiKey.trim()}
+                  disabled={greenhouseTesting || (!greenhouseApiKey.trim() && !greenhouseConfigured)}
                   className="gap-2 transition-all duration-200 hover:scale-[1.02]"
                 >
                   {greenhouseTesting ? <Loader className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
@@ -507,191 +530,7 @@ export default function SettingsPage() {
                   {greenhouseTestResult === 'success' ? (
                     <><Check className="h-4 w-4" /> Greenhouse connected!</>
                   ) : (
-                    <><X className="h-4 w-4" /> Connection failed. Check your API key.</>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* LLM Info Banner */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="flex items-start gap-3 pt-6">
-              <Brain className="h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <p className="font-medium text-foreground">Multiple LLM Support</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Choose between paid (OpenAI) and free options (Gemini, Groq, Ollama) based on your needs!
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Provider Selection */}
-          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
-            <CardHeader>
-              <CardTitle>Select AI Provider</CardTitle>
-              <CardDescription>Choose your preferred LLM provider and model. Click a card to select.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {providersError && (
-                <div className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
-                  {providersError}
-                  <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchProviders()}>
-                    Retry
-                  </Button>
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {providers.map((provider) => {
-                  const isSelected = selectedProvider === provider.id;
-                  return (
-                    <button
-                      key={provider.id}
-                      type="button"
-                      onClick={() => handleProviderChange(provider.id)}
-                      className={`flex cursor-pointer flex-col rounded-xl border-2 p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                        isSelected
-                          ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                          : 'border-border hover:border-primary/40'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-foreground">{provider.name}</h3>
-                          <p className="text-sm text-muted-foreground">{provider.pricing}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {isSelected && (
-                            <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                          )}
-                          {provider.freeOption && (
-                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
-                              FREE
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Zap className="h-3 w-3" /> {provider.speed}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Brain className="h-3 w-3" /> {provider.quality}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {selectedProviderData && (
-                <div ref={modelSectionRef} className="space-y-6">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">Model</label>
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      className="h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      {selectedProviderData.models.map((model) => (
-                        <option key={model} value={model}>
-                          {model}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedProviderData.requiresApiKey && (
-                    <div>
-                      <label className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
-                        <Lock className="h-4 w-4" />
-                        API Key
-                        {selectedProviderData.freeOption && (
-                          <span className="text-xs text-emerald-600">(Free tier available)</span>
-                        )}
-                      </label>
-                      <Input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Enter your API key"
-                        className="transition-all duration-200 focus:ring-2"
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Get your API key from:{' '}
-                        {selectedProvider === 'openai' && 'platform.openai.com'}
-                        {selectedProvider === 'gemini' && 'makersuite.google.com/app/apikey'}
-                        {selectedProvider === 'claude' && 'console.anthropic.com'}
-                        {selectedProvider === 'groq' && 'console.groq.com'}
-                      </p>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
-                      Temperature: {temperature}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.1"
-                      value={temperature}
-                      onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                      className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary"
-                    />
-                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                      <span>More Consistent</span>
-                      <span>More Creative</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {currentSettings && (
-                <div className="rounded-lg bg-muted/50 p-4">
-                  <h3 className="mb-2 font-medium text-foreground">Current Active Settings</h3>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>Provider: <span className="font-medium text-foreground">{currentSettings.provider}</span></p>
-                    <p>Model: <span className="font-medium text-foreground">{currentSettings.model}</span></p>
-                    <p>Temperature: <span className="font-medium text-foreground">{currentSettings.temperature}</span></p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handleTest}
-                  disabled={testing || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
-                  className="flex-1 gap-2 transition-all duration-200 hover:scale-[1.02]"
-                >
-                  {testing ? <Loader className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-                  Test Connection
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={saving || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
-                  className="flex-1 gap-2 transition-all duration-200 hover:scale-[1.02]"
-                >
-                  {saving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Save Settings
-                </Button>
-              </div>
-
-              {testResult && (
-                <div
-                  className={`flex items-center gap-3 rounded-lg p-4 ${
-                    testResult === 'success'
-                      ? 'bg-emerald-50 text-emerald-800'
-                      : 'bg-destructive/10 text-destructive'
-                  }`}
-                >
-                  {testResult === 'success' ? (
-                    <><Check className="h-5 w-5" /> Connection successful! LLM is working perfectly.</>
-                  ) : (
-                    <><X className="h-5 w-5" /> Connection failed. Check your API key and try again.</>
+                    <><X className="h-4 w-4" /> Connection failed. {greenhouseErrorMsg || 'Check your API key.'}</>
                   )}
                 </div>
               )}

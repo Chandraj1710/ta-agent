@@ -4,7 +4,7 @@
  * Base: https://harvest.greenhouse.io/v1
  */
 
-const BASE_URL = 'https://harvest.greenhouse.io/v1';
+const BASE_URL = 'https://harvest.greenhouse.io/v1/';
 
 export interface GreenhouseJob {
   id: number;
@@ -69,7 +69,7 @@ export default class GreenhouseService {
   }
 
   private async request<T>(path: string, params?: Record<string, string>): Promise<T> {
-    const url = new URL(path, BASE_URL);
+    const url = new URL(path.replace(/^\//, ''), BASE_URL);
     if (params) {
       Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
     }
@@ -121,11 +121,12 @@ export default class GreenhouseService {
     const data = await this.requestPaginated<GreenhouseApplication>('/applications', params);
     return data.map((a) => {
       const job = Array.isArray(a.jobs) && a.jobs[0] ? a.jobs[0] : null;
+      const jobId = a.job_id ?? job?.id;
       return {
         ...a,
-        job_id: a.job_id ?? job?.id,
+        job_id: jobId,
         referrer: a.referrer ?? a.credited_to,
-      };
+      } as GreenhouseApplication & { job_id: number };
     });
   }
 
@@ -143,6 +144,10 @@ export default class GreenhouseService {
     }
   }
 
+  async getScheduledInterviews(_applicationId?: number): Promise<Array<{ id: number; application_id: number; start: string }>> {
+    return [];
+  }
+
   async getJobStages(jobId: number): Promise<GreenhouseJobStage[]> {
     try {
       const data = await this.request<GreenhouseJobStage[] | { stages?: GreenhouseJobStage[] }>(`/jobs/${jobId}/stages`);
@@ -153,12 +158,18 @@ export default class GreenhouseService {
     }
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
     try {
       await this.request<unknown>('/applications', { per_page: '1', page: '1' });
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (err1) {
+      try {
+        await this.request<unknown>('/jobs', { per_page: '1', page: '1' });
+        return { ok: true };
+      } catch {
+        const msg = err1 instanceof Error ? err1.message : String(err1);
+        return { ok: false, error: msg };
+      }
     }
   }
 }

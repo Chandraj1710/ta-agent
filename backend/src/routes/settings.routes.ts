@@ -44,7 +44,7 @@ router.post('/greenhouse', (req, res) => {
  */
 router.post('/greenhouse/test', async (req, res) => {
   const { apiKey } = req.body || {};
-  const key = apiKey ? String(apiKey).trim() : getGreenhouseApiKey();
+  const key = apiKey ? String(apiKey).replace(/\s/g, '').trim() : getGreenhouseApiKey();
   if (!key) {
     return res.status(400).json({
       success: false,
@@ -54,15 +54,19 @@ router.post('/greenhouse/test', async (req, res) => {
   try {
     const GreenhouseService = (await import('../services/greenhouse.service')).default;
     const greenhouse = new GreenhouseService(key);
-    const ok = await greenhouse.testConnection();
+    const result = await greenhouse.testConnection();
     res.json({
-      success: ok,
-      message: ok ? 'Greenhouse connected' : 'Connection failed',
+      success: result.ok,
+      message: result.ok ? 'Greenhouse connected' : (result.error || 'Connection failed'),
+      error: result.error,
     });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Connection failed';
+    console.error('Greenhouse test error:', msg);
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Connection failed',
+      message: msg,
+      error: msg,
     });
   }
 });

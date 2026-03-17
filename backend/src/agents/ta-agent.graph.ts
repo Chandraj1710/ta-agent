@@ -40,12 +40,14 @@ export class TAAgentGraph {
 
       const appWithDetails: AgentState['applications'] = [];
       for (const a of applications) {
+        const jobId = a.job_id ?? (Array.isArray(a.jobs) && a.jobs[0] ? a.jobs[0].id : undefined);
+        if (jobId == null) continue;
         try {
           const candidate = await greenhouse.getCandidate(a.candidate_id);
-          const job = jobs.find((j) => j.id === a.job_id);
+          const job = jobs.find((j) => j.id === jobId);
           appWithDetails.push({
             id: a.id,
-            jobId: a.job_id,
+            jobId,
             candidateId: a.candidate_id,
             stageName: a.current_stage?.name || 'Unknown',
             enteredAt: a.last_activity_at || a.updated_at,
@@ -57,13 +59,13 @@ export class TAAgentGraph {
         } catch {
           appWithDetails.push({
             id: a.id,
-            jobId: a.job_id,
+            jobId,
             candidateId: a.candidate_id,
             stageName: a.current_stage?.name || 'Unknown',
             enteredAt: a.last_activity_at || a.updated_at,
             status: a.status,
             referrerId: a.referrer?.id,
-            jobTitle: jobs.find((j) => j.id === a.job_id)?.name || `Job ${a.job_id}`,
+            jobTitle: jobs.find((j) => j.id === jobId)?.name || `Job ${jobId}`,
           });
         }
       }
