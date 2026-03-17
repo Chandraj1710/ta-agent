@@ -39,8 +39,8 @@ const moduleCards = [
     description: 'Candidates over SLA, stale jobs, offers no response',
     icon: AlertTriangle,
     color: 'amber',
-    iconBg: 'bg-amber-500/10',
-    iconColor: 'text-amber-600',
+    iconBg: 'bg-amber-500/10 dark:bg-amber-500/20',
+    iconColor: 'text-amber-600 dark:text-amber-400',
     borderHover: 'hover:border-amber-500/50',
   },
   {
@@ -50,8 +50,8 @@ const moduleCards = [
     description: 'Missing scorecards 24h+ after interview',
     icon: FileCheck,
     color: 'blue',
-    iconBg: 'bg-blue-500/10',
-    iconColor: 'text-blue-600',
+    iconBg: 'bg-blue-500/10 dark:bg-blue-500/20',
+    iconColor: 'text-blue-600 dark:text-blue-400',
     borderHover: 'hover:border-blue-500/50',
   },
   {
@@ -61,8 +61,8 @@ const moduleCards = [
     description: 'Referrals not reviewed or no next action',
     icon: Users,
     color: 'emerald',
-    iconBg: 'bg-emerald-500/10',
-    iconColor: 'text-emerald-600',
+    iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
     borderHover: 'hover:border-emerald-500/50',
   },
 ];
@@ -207,8 +207,8 @@ export default function Home() {
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Hero gradient */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-50 via-white to-indigo-50/30" />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(99,102,241,0.08),transparent)]" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/30" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(99,102,241,0.08),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(99,102,241,0.12),transparent)]" />
 
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <motion.div
@@ -250,7 +250,7 @@ export default function Home() {
         >
           {/* Toggle: AI Query or Manual Filters */}
           <motion.div variants={item} className="sm:col-span-2 lg:col-span-3">
-            <div className="mb-3 flex rounded-lg border border-input bg-muted/30 p-1 w-fit">
+            <div className="mb-3 flex rounded-lg border border-input bg-muted/30 dark:bg-muted/50 p-1 w-fit">
               <button
                 type="button"
                 onClick={() => setMode('ai')}
@@ -278,7 +278,7 @@ export default function Home() {
             </div>
 
             {mode === 'ai' && (
-              <Card className="border-2 border-indigo-200/60 bg-gradient-to-br from-indigo-50/50 to-white">
+              <Card className="border-2 border-indigo-200/60 bg-gradient-to-br from-indigo-50/50 to-white dark:border-indigo-800/50 dark:from-indigo-950/30 dark:to-slate-900">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Ask the TA Agent</CardTitle>
                   <CardDescription>
@@ -315,7 +315,7 @@ export default function Home() {
             )}
 
             {mode === 'filters' && (
-              <Card className="border border-slate-200/80 bg-white">
+              <Card className="border border-slate-200/80 bg-white dark:border-slate-700 dark:bg-slate-900/50">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Manual filters</CardTitle>
                   <CardDescription>
@@ -349,7 +349,7 @@ export default function Home() {
                   <Card
                     className={cn(
                       'group relative overflow-hidden border-2 border-transparent transition-all duration-300 ease-in-out',
-                      'hover:shadow-lg hover:shadow-slate-200/50 hover:-translate-y-0.5',
+                      'hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:-translate-y-0.5',
                       card.borderHover
                     )}
                   >
@@ -369,9 +369,9 @@ export default function Home() {
                       ) : (
                         <span className={cn(
                           'text-2xl font-bold',
-                          card.color === 'amber' && 'text-amber-600',
-                          card.color === 'blue' && 'text-blue-600',
-                          card.color === 'emerald' && 'text-emerald-600'
+                          card.color === 'amber' && 'text-amber-600 dark:text-amber-400',
+                          card.color === 'blue' && 'text-blue-600 dark:text-blue-400',
+                          card.color === 'emerald' && 'text-emerald-600 dark:text-emerald-400'
                         )}>
                           {count}
                         </span>

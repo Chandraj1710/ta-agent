@@ -108,23 +108,15 @@ export default class GreenhouseService {
     }
   }
 
-<<<<<<< HEAD
   private static readonly MAX_PAGES = 20;
 
-  private async requestPaginated<T>(path: string, params?: Record<string, string>): Promise<T[]> {
-=======
   private async requestPaginated<T>(path: string, params?: Record<string, string>, maxPages?: number): Promise<T[]> {
->>>>>>> f6491c2 (feat: stalled pipeline module, real API, docs, and tooling)
     const all: T[] = [];
     let page = 1;
     const perPage = 100;
     let hasMore = true;
-<<<<<<< HEAD
-    while (hasMore && page <= GreenhouseService.MAX_PAGES) {
-=======
-    while (hasMore) {
-      if (maxPages != null && page > maxPages) break;
->>>>>>> f6491c2 (feat: stalled pipeline module, real API, docs, and tooling)
+    const limit = maxPages ?? GreenhouseService.MAX_PAGES;
+    while (hasMore && page <= limit) {
       const p = { ...params, per_page: String(perPage), page: String(page) };
       const data = await this.request<T[]>(path, p);
       if (!Array.isArray(data) || data.length === 0) {

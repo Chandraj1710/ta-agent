@@ -256,7 +256,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-slate-50/80 to-background">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-slate-50/80 to-background dark:from-slate-950/80 dark:to-background">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -293,14 +293,14 @@ export default function SettingsPage() {
           className="space-y-6"
         >
           {/* LLM Provider Selection - First so it's immediately visible */}
-          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
+          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 transition-all duration-300 hover:shadow-xl">
             <CardHeader>
               <CardTitle>Select AI Provider</CardTitle>
               <CardDescription>Choose your preferred LLM provider and model. Click a card to select.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {providersError && (
-                <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 border border-amber-200">
+                <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-800">
                   {providersError}
                   <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchProviders()}>
                     Retry
@@ -331,7 +331,7 @@ export default function SettingsPage() {
                             <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
                           )}
                           {provider.freeOption && (
-                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
+                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                               FREE
                             </Badge>
                           )}
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                         <Lock className="h-4 w-4" />
                         API Key
                         {selectedProviderData.freeOption && (
-                          <span className="text-xs text-emerald-600">(Free tier available)</span>
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400">(Free tier available)</span>
                         )}
                       </label>
                       <Input
@@ -449,7 +449,7 @@ export default function SettingsPage() {
                 <div
                   className={`flex items-center gap-3 rounded-lg p-4 ${
                     testResult === 'success'
-                      ? 'bg-emerald-50 text-emerald-800'
+                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
                       : 'bg-destructive/10 text-destructive'
                   }`}
                 >
@@ -477,13 +477,13 @@ export default function SettingsPage() {
           </Card>
 
           {/* Greenhouse API */}
-          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
+          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 transition-all duration-300 hover:shadow-xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-primary" />
                 Greenhouse API Key
                 {greenhouseConfigured && (
-                  <Badge variant="outline" className="ml-2 border-emerald-300 bg-emerald-50 text-emerald-700">
+                  <Badge variant="outline" className="ml-2 border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                     Configured {greenhouseMasked && `(${greenhouseMasked})`}
                   </Badge>
                 )}
@@ -523,7 +523,7 @@ export default function SettingsPage() {
                 <div
                   className={`flex items-center gap-2 rounded-lg p-3 text-sm ${
                     greenhouseTestResult === 'success'
-                      ? 'bg-emerald-50 text-emerald-800'
+                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
                       : 'bg-destructive/10 text-destructive'
                   }`}
                 >

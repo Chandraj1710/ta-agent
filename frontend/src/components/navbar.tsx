@@ -8,6 +8,7 @@ import { AlertTriangle, FileCheck, Users, Settings, LayoutDashboard } from 'luci
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isUsingMockData } from '@/lib/api';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -51,12 +52,14 @@ export function Navbar() {
             TA Ops Agent
           </span>
           {mockMode && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
               Demo
             </span>
           )}
         </Link>
 
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
         <nav className="flex items-center gap-1">
           {navItems.map((item) => {
             const isActive =
@@ -81,6 +84,7 @@ export function Navbar() {
             );
           })}
         </nav>
+        </div>
       </div>
     </motion.header>
   );

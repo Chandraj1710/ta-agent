@@ -47,9 +47,9 @@ export default function ReferralAlertsPage() {
 
   const getSubTypeBadge = (subType: string) => {
     if (subType === 'not_reviewed') {
-      return <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">Not Reviewed</Badge>;
+      return <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">Not Reviewed</Badge>;
     }
-    return <Badge variant="outline" className="border-orange-300 bg-orange-50 text-orange-700">No Next Action</Badge>;
+    return <Badge variant="outline" className="border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-950/50 dark:text-orange-300">No Next Action</Badge>;
   };
 
   return (
@@ -57,10 +57,10 @@ export default function ReferralAlertsPage() {
       title="Module 3: Referral Follow-up"
       description="Referral candidates not reviewed or with no next action scheduled"
       icon={Users}
-      iconColor="bg-emerald-500/10 text-emerald-600"
+      iconColor="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
     >
       {!loading && alerts.length > 0 && (
-        <Card className="mb-4 border-slate-200/80">
+        <Card className="mb-4 border-slate-200/80 dark:border-slate-700">
           <CardContent className="pt-4">
             <AlertFiltersUI
               alerts={alerts}
@@ -97,7 +97,7 @@ export default function ReferralAlertsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50">
+        <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border">
               <thead>

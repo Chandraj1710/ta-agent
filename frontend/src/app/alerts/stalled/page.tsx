@@ -50,9 +50,9 @@ export default function StalledAlertsPage() {
       case 'stale_job':
         return <Badge variant="secondary">Stale Job</Badge>;
       case 'offer_no_response':
-        return <Badge variant="outline" className="border-orange-300 bg-orange-50 text-orange-700">Offer No Response</Badge>;
+        return <Badge variant="outline" className="border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-950/50 dark:text-orange-300">Offer No Response</Badge>;
       default:
-        return <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">Stage SLA</Badge>;
+        return <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-300">Stage SLA</Badge>;
     }
   };
 
@@ -61,10 +61,10 @@ export default function StalledAlertsPage() {
       title="Module 1: Stalled Pipeline Alerts"
       description="Candidates over SLA, stale jobs, offers with no response"
       icon={AlertTriangle}
-      iconColor="bg-amber-500/10 text-amber-600"
+      iconColor="bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
     >
       {!loading && alerts.length > 0 && (
-        <Card className="mb-4 border-slate-200/80">
+        <Card className="mb-4 border-slate-200/80 dark:border-slate-700">
           <CardContent className="pt-4">
             <AlertFiltersUI
               alerts={alerts}
@@ -100,7 +100,7 @@ export default function StalledAlertsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50">
+        <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
           <p className="px-6 py-2 text-xs text-muted-foreground border-b border-border">
             For <strong>Stale Job</strong> alerts, Candidate and Stage show — (job has no recent activity; no single candidate/stage).
           </p>

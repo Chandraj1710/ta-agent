@@ -47,10 +47,10 @@ export default function ScorecardAlertsPage() {
       title="Module 2: Scorecard Accountability"
       description="Interviewers who haven't submitted scorecards within 24h of interview"
       icon={FileCheck}
-      iconColor="bg-blue-500/10 text-blue-600"
+      iconColor="bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
     >
       {!loading && alerts.length > 0 && (
-        <Card className="mb-4 border-slate-200/80">
+        <Card className="mb-4 border-slate-200/80 dark:border-slate-700">
           <CardContent className="pt-4">
             <AlertFiltersUI
               alerts={alerts}
@@ -86,7 +86,7 @@ export default function ScorecardAlertsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50">
+        <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border">
               <thead>
