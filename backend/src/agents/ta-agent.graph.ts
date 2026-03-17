@@ -33,7 +33,7 @@ export class TAAgentGraph {
       const greenhouse = getGreenhouseService();
       const [jobs, applications, scorecards, sources] = await Promise.all([
         greenhouse.getJobs('open'),
-        greenhouse.getApplications(undefined, 'active'),
+        greenhouse.getApplications(undefined, 'active', 10),
         greenhouse.getScorecards({
           created_after: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
         }),
@@ -136,6 +136,15 @@ export class TAAgentGraph {
           };
         });
 
+      // Job lastActivityAt = most recent application activity for that job (for stale-job logic)
+      const jobLastActivity = new Map<number, string>();
+      for (const a of appWithDetails) {
+        const at = a.enteredAt;
+        if (!at || !a.jobId) continue;
+        const existing = jobLastActivity.get(a.jobId);
+        if (!existing || new Date(at) > new Date(existing)) jobLastActivity.set(a.jobId, at);
+      }
+
       const jobIdsInUse = new Set(appWithDetails.map((a) => a.jobId));
       const filteredJobs = locationFilter ? jobs.filter((j) => jobIdsInUse.has(j.id)) : jobs;
 
@@ -144,7 +153,7 @@ export class TAAgentGraph {
         jobs: filteredJobs.map((j) => ({
           id: j.id,
           title: j.name,
-          lastActivityAt: j.updated_at,
+          lastActivityAt: jobLastActivity.get(j.id) || j.updated_at,
         })),
         applications: appWithDetails,
         scorecards: scorecards.map((s) => ({

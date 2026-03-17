@@ -1,7 +1,13 @@
 /**
  * Greenhouse Harvest API v1 Service
- * Uses Basic Auth (api_key:) - matches working curl from Greenhouse docs
+ * Auth: Basic Auth with api_key: (same as curl -u YOUR_API_KEY:)
  * Base: https://harvest.greenhouse.io/v1
+ *
+ * Endpoints used (per Harvest docs):
+ *   GET /applications, /jobs, /candidates, /candidates/{id}
+ *   GET /users, /scheduled_interviews, /scorecards
+ *   GET /activity_feed, /offers, /rejection_reasons
+ *   GET /jobs/{id}/stages
  */
 
 const BASE_URL = 'https://harvest.greenhouse.io/v1/';
@@ -102,14 +108,23 @@ export default class GreenhouseService {
     }
   }
 
+<<<<<<< HEAD
   private static readonly MAX_PAGES = 20;
 
   private async requestPaginated<T>(path: string, params?: Record<string, string>): Promise<T[]> {
+=======
+  private async requestPaginated<T>(path: string, params?: Record<string, string>, maxPages?: number): Promise<T[]> {
+>>>>>>> f6491c2 (feat: stalled pipeline module, real API, docs, and tooling)
     const all: T[] = [];
     let page = 1;
     const perPage = 100;
     let hasMore = true;
+<<<<<<< HEAD
     while (hasMore && page <= GreenhouseService.MAX_PAGES) {
+=======
+    while (hasMore) {
+      if (maxPages != null && page > maxPages) break;
+>>>>>>> f6491c2 (feat: stalled pipeline module, real API, docs, and tooling)
       const p = { ...params, per_page: String(perPage), page: String(page) };
       const data = await this.request<T[]>(path, p);
       if (!Array.isArray(data) || data.length === 0) {
@@ -122,6 +137,13 @@ export default class GreenhouseService {
     return all;
   }
 
+  /** Single-page request for quick validation (max 1 page). */
+  async requestOnePage<T>(path: string, params?: Record<string, string>): Promise<T[]> {
+    const p = { ...params, per_page: '5', page: '1' };
+    const data = await this.request<T[]>(path, p);
+    return Array.isArray(data) ? data : [];
+  }
+
   async getJobs(status?: string): Promise<GreenhouseJob[]> {
     const params: Record<string, string> = {};
     if (status) params.status = status;
@@ -132,11 +154,11 @@ export default class GreenhouseService {
     }));
   }
 
-  async getApplications(jobId?: number, status?: string): Promise<GreenhouseApplication[]> {
+  async getApplications(jobId?: number, status?: string, maxPages?: number): Promise<GreenhouseApplication[]> {
     const params: Record<string, string> = {};
     if (jobId) params.job_id = String(jobId);
     if (status) params.status = status;
-    const data = await this.requestPaginated<GreenhouseApplication>('/applications', params);
+    const data = await this.requestPaginated<GreenhouseApplication>('/applications', params, maxPages);
     return data.map((a) => {
       const job = Array.isArray(a.jobs) && a.jobs[0] ? a.jobs[0] : null;
       const jobId = a.job_id ?? job?.id;
@@ -198,6 +220,41 @@ export default class GreenhouseService {
         const msg = err1 instanceof Error ? err1.message : String(err1);
         return { ok: false, error: msg };
       }
+    }
+  }
+
+  /** GET /v1/users – recruiters / interviewers (paginated) */
+  async getUsers(): Promise<unknown[]> {
+    const data = await this.requestPaginated<unknown>('/users');
+    return data;
+  }
+
+  /** GET /v1/scheduled_interviews – for scorecard / interview date logic (paginated) */
+  async getScheduledInterviews(params?: Record<string, string>): Promise<unknown[]> {
+    const data = await this.requestPaginated<unknown>('/scheduled_interviews', params ?? {});
+    return data;
+  }
+
+  /** GET /v1/activity_feed – for "no activity" logic (paginated) */
+  async getActivityFeed(params?: Record<string, string>): Promise<unknown[]> {
+    const data = await this.requestPaginated<unknown>('/activity_feed', params ?? {});
+    return data;
+  }
+
+  /** GET /v1/offers – for offer-related alerts (paginated) */
+  async getOffers(params?: Record<string, string>): Promise<unknown[]> {
+    const data = await this.requestPaginated<unknown>('/offers', params ?? {});
+    return data;
+  }
+
+  /** GET /v1/rejection_reasons */
+  async getRejectionReasons(): Promise<unknown[]> {
+    try {
+      const data = await this.request<unknown[] | { rejection_reasons?: unknown[] }>('/rejection_reasons');
+      if (Array.isArray(data)) return data;
+      return (data as { rejection_reasons?: unknown[] }).rejection_reasons || [];
+    } catch {
+      return [];
     }
   }
 }

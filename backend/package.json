@@ -11,7 +11,8 @@
     "db:push": "drizzle-kit push:pg",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx src/scripts/seed.ts",
-    "sync-greenhouse": "tsx src/scripts/sync-greenhouse.ts"
+    "sync-greenhouse": "tsx src/scripts/sync-greenhouse.ts",
+    "validate-greenhouse": "tsx src/scripts/validate-greenhouse.ts"
   },
   "dependencies": {
     "@langchain/anthropic": "^0.1.11",

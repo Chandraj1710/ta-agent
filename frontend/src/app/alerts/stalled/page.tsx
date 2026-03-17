@@ -35,7 +35,7 @@ export default function StalledAlertsPage() {
   const fetchAlerts = async () => {
     try {
       const data = await api.getAlerts('stalled');
-      setAlerts(data.success ? data.data : []);
+      setAlerts((data.success ? data.data : []) as Alert[]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -101,28 +101,20 @@ export default function StalledAlertsPage() {
         </Card>
       ) : (
         <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50">
+          <p className="px-6 py-2 text-xs text-muted-foreground border-b border-border">
+            For <strong>Stale Job</strong> alerts, Candidate and Stage show — (job has no recent activity; no single candidate/stage).
+          </p>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border">
               <thead>
                 <tr className="bg-muted/50">
-                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Candidate
-                  </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Job
-                  </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Stage
-                  </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Days
-                  </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Recruiters
-                  </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Type
-                  </th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Candidate</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Job</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Stage</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Days</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Recruiter</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Type</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Severity</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-card">
@@ -130,35 +122,33 @@ export default function StalledAlertsPage() {
                   {filteredAlerts.map((a, i) => {
                     const candidateId = a.payload.candidateId as number | undefined;
                     const isClickable = typeof candidateId === 'number';
+                    const isStaleJob = a.payload.subType === 'stale_job';
+                    const candidateLabel = isStaleJob ? '—' : String(a.payload.candidateName || '—');
+                    const stageLabel = isStaleJob ? '—' : String(a.payload.currentStage || '—');
+                    const daysLabel = String(a.payload.daysInStage ?? a.payload.daysSinceOffer ?? a.payload.daysSinceActivity ?? '—');
+                    const recruiterLabel = isStaleJob ? '—' : String(a.payload.recruiters ?? (a.payload.recruiterId ? `Recruiter #${a.payload.recruiterId}` : '—'));
                     return (
-                    <motion.tr
-                      key={a.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.02 }}
-                      className={`transition-colors ${isClickable ? 'cursor-pointer hover:bg-muted/50' : 'hover:bg-muted/30'}`}
-                      onClick={() => isClickable && setSelectedAlert(a)}
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-foreground">
-                        {String(a.payload.candidateName || '-')}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {String(a.payload.jobTitle || '-')}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {String(a.payload.currentStage || '-')}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-foreground">
-                        {String(a.payload.daysInStage ?? a.payload.daysSinceOffer ?? a.payload.daysSinceActivity ?? '-')}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {String(a.payload.recruiters || '-')}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getSubTypeBadge(String(a.payload.subType || 'stage_sla'))}
-                      </td>
-                    </motion.tr>
-                  );
+                      <motion.tr
+                        key={a.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                        className={`transition-colors ${isClickable ? 'cursor-pointer hover:bg-muted/50' : 'hover:bg-muted/30'}`}
+                        onClick={() => isClickable && setSelectedAlert(a)}
+                      >
+                        <td className="px-6 py-4 text-sm font-medium text-foreground">{candidateLabel}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{String(a.payload.jobTitle || '—')}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{stageLabel}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-foreground">{daysLabel}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{recruiterLabel}</td>
+                        <td className="px-6 py-4">{getSubTypeBadge(String(a.payload.subType || 'stage_sla'))}</td>
+                        <td className="px-6 py-4">
+                          <Badge variant={a.severity === 'critical' ? 'destructive' : 'secondary'} className="text-xs">
+                            {a.severity}
+                          </Badge>
+                        </td>
+                      </motion.tr>
+                    );
                   })}
                 </AnimatePresence>
               </tbody>

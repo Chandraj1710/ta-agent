@@ -90,7 +90,8 @@ router.get('/sync', async (req, res) => {
     for (const a of applicationsData) {
       const jobId = a.job_id ?? (Array.isArray(a.jobs) && a.jobs[0] ? a.jobs[0].id : undefined);
       if (jobId == null || !jobIds.has(jobId)) continue;
-      const enteredAt = a.last_activity_at || a.updated_at || a.applied_at;
+      const enteredAtRaw = a.last_activity_at || a.updated_at || a.applied_at;
+      const enteredAt = enteredAtRaw ? new Date(enteredAtRaw) : new Date();
       await db
         .insert(applications)
         .values({
@@ -100,7 +101,7 @@ router.get('/sync', async (req, res) => {
           stageName: a.current_stage?.name,
           status: a.status,
           referrerId: a.referrer?.id,
-          enteredAt: enteredAt ? new Date(enteredAt) : new Date(),
+          enteredAt,
         })
         .onConflictDoUpdate({
           target: applications.id,
@@ -108,7 +109,7 @@ router.get('/sync', async (req, res) => {
             stageName: a.current_stage?.name,
             status: a.status,
             referrerId: a.referrer?.id,
-            enteredAt: new Date(enteredAt || Date.now()),
+            enteredAt,
             updatedAt: new Date(),
           },
         });

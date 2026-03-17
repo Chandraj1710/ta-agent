@@ -1,82 +1,65 @@
 /**
- * API client with mock fallback - works without backend
- * Uses mock data when NEXT_PUBLIC_USE_MOCK=true or when API is unavailable
+ * API client - uses real backend only (Greenhouse + TA Agent).
+ * Set NEXT_PUBLIC_API_URL to your backend (default http://localhost:3001).
  */
-
-import { mockApi, useMockMode } from './mock-data';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-async function fetchWithFallback<T>(
-  path: string,
-  getMock: () => T,
-  options?: RequestInit
-): Promise<T> {
-  const forceMock = useMockMode();
-  if (forceMock) {
-    return Promise.resolve(getMock());
-  }
-
-  try {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      headers: { 'Content-Type': 'application/json', ...options?.headers },
-    });
-    const data = await res.json();
-    if (res.ok) return data as T;
-    throw new Error(data.error || 'Request failed');
-  } catch (error) {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('ta-agent-mock', '1');
-      window.dispatchEvent(new CustomEvent('ta-agent-mock-changed'));
-    }
-    return getMock();
-  }
+async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error || res.statusText || 'Request failed');
+  return data as T;
 }
 
 export function isUsingMockData(): boolean {
-  return useMockMode();
+  return false;
 }
 
 export const api = {
   getAlerts: (type?: string) =>
-    fetchWithFallback(`/api/alerts${type ? `?type=${type}` : ''}`, () => mockApi.getAlerts(type)),
+    fetchApi<{ success: boolean; data: unknown[] }>(`/api/alerts${type ? `?type=${type}` : ''}`),
 
   refreshAlerts: () =>
-    fetchWithFallback('/api/alerts/refresh', () => mockApi.refreshAlerts(), { method: 'POST' }),
+    fetchApi<{ success: boolean; message?: string; count?: number }>('/api/alerts/refresh', {
+      method: 'POST',
+    }),
 
-  getJobs: () => fetchWithFallback('/api/jobs', () => mockApi.getJobs()),
+  getJobs: () =>
+    fetchApi<{ success: boolean; data: unknown[] }>('/api/jobs'),
 
   getSettingsProviders: () =>
-    fetchWithFallback('/api/settings/llm/providers', () => mockApi.getSettingsProviders()),
+    fetchApi<{ success: boolean; data?: unknown[] }>('/api/settings/llm/providers'),
 
   getSettingsLlm: () =>
-    fetchWithFallback('/api/settings/llm', () => mockApi.getSettingsLlm()),
+    fetchApi<{ success: boolean; provider?: string; model?: string }>('/api/settings/llm'),
 
   getSettingsGreenhouse: () =>
-    fetchWithFallback('/api/settings/greenhouse', () => mockApi.getSettingsGreenhouse()),
+    fetchApi<{ success: boolean; hasKey?: boolean }>('/api/settings/greenhouse'),
 
   postSettingsGreenhouse: (body: { apiKey: string }) =>
-    fetchWithFallback('/api/settings/greenhouse', () => mockApi.postSettingsGreenhouse(), {
+    fetchApi<{ success: boolean; message?: string }>('/api/settings/greenhouse', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
   postSettingsGreenhouseTest: (body: { apiKey: string }) =>
-    fetchWithFallback(
-      '/api/settings/greenhouse/test',
-      () => mockApi.postSettingsGreenhouseTest(),
-      { method: 'POST', body: JSON.stringify(body) }
-    ),
+    fetchApi<{ success: boolean; message?: string }>('/api/settings/greenhouse/test', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 
   postSettingsLlm: (body: Record<string, unknown>) =>
-    fetchWithFallback('/api/settings/llm', () => mockApi.postSettingsLlm(), {
+    fetchApi<{ success: boolean; message?: string }>('/api/settings/llm', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
   postSettingsLlmTest: (body: Record<string, unknown>) =>
-    fetchWithFallback('/api/settings/llm/test', () => mockApi.postSettingsLlmTest(), {
+    fetchApi<{ success: boolean; message?: string; ok?: boolean }>('/api/settings/llm/test', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
