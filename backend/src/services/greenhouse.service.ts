@@ -176,10 +176,6 @@ export default class GreenhouseService {
     }
   }
 
-  async getScheduledInterviews(_applicationId?: number): Promise<Array<{ id: number; application_id: number; start: string }>> {
-    return [];
-  }
-
   /** Fetch job board sources. Use type.name === 'referrals' to identify referral source IDs. */
   async getSources(): Promise<Array<{ id: number; name: string; type?: { id: number; name: string } }>> {
     try {

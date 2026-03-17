@@ -79,10 +79,17 @@ export default function SettingsPage() {
 
     api.getSettingsLlm().then((data) => {
       if (data.success && data.data) {
-        setCurrentSettings(data.data);
-        setSelectedProvider(data.data.provider);
-        setSelectedModel(data.data.model);
-        setTemperature(data.data.temperature ?? 0.7);
+        const d = data.data;
+        const settings: LLMSettings = {
+          provider: d.provider ?? 'openai',
+          model: d.model ?? 'gpt-4-turbo-preview',
+          apiKey: d.apiKey,
+          temperature: d.temperature ?? 0.7,
+        };
+        setCurrentSettings(settings);
+        setSelectedProvider(settings.provider);
+        setSelectedModel(settings.model);
+        setTemperature(settings.temperature);
       }
     });
   }, []);
@@ -165,7 +172,7 @@ export default function SettingsPage() {
       setProvidersError(null);
       const data = await api.getSettingsProviders();
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        setProviders(data.data);
+        setProviders(data.data as Provider[]);
       }
     } catch (error) {
       console.error('Error fetching providers:', error);
@@ -177,10 +184,17 @@ export default function SettingsPage() {
     try {
       const data = await api.getSettingsLlm();
       if (data.success && data.data) {
-        setCurrentSettings(data.data);
-        setSelectedProvider(data.data.provider);
-        setSelectedModel(data.data.model);
-        setTemperature(data.data.temperature ?? 0.7);
+        const d = data.data;
+        const settings: LLMSettings = {
+          provider: d.provider ?? 'openai',
+          model: d.model ?? 'gpt-4-turbo-preview',
+          apiKey: d.apiKey,
+          temperature: d.temperature ?? 0.7,
+        };
+        setCurrentSettings(settings);
+        setSelectedProvider(settings.provider);
+        setSelectedModel(settings.model);
+        setTemperature(settings.temperature);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);

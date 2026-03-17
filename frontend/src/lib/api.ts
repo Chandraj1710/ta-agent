@@ -35,10 +35,16 @@ export const api = {
     fetchApi<{ success: boolean; data?: unknown[] }>('/api/settings/llm/providers'),
 
   getSettingsLlm: () =>
-    fetchApi<{ success: boolean; provider?: string; model?: string }>('/api/settings/llm'),
+    fetchApi<{
+      success: boolean;
+      data?: { provider?: string; model?: string; temperature?: number; apiKey?: string };
+    }>('/api/settings/llm'),
 
   getSettingsGreenhouse: () =>
-    fetchApi<{ success: boolean; hasKey?: boolean }>('/api/settings/greenhouse'),
+    fetchApi<{
+      success: boolean;
+      data?: { configured?: boolean; masked?: string };
+    }>('/api/settings/greenhouse'),
 
   postSettingsGreenhouse: (body: { apiKey: string }) =>
     fetchApi<{ success: boolean; message?: string }>('/api/settings/greenhouse', {

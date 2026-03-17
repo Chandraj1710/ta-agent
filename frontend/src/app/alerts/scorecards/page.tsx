@@ -32,7 +32,7 @@ export default function ScorecardAlertsPage() {
   const fetchAlerts = async () => {
     try {
       const data = await api.getAlerts('scorecard');
-      setAlerts(data.success ? data.data : []);
+      setAlerts((data.success ? data.data : []) as Alert[]);
     } catch (err) {
       console.error(err);
     } finally {

@@ -35,7 +35,7 @@ export default function ReferralAlertsPage() {
   const fetchAlerts = async () => {
     try {
       const data = await api.getAlerts('referral');
-      setAlerts(data.success ? data.data : []);
+      setAlerts((data.success ? data.data : []) as Alert[]);
     } catch (err) {
       console.error(err);
     } finally {
