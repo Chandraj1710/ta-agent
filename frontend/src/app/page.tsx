@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { AlertTriangle, FileCheck, Users, Settings, RefreshCw, ChevronRight } from 'lucide-react';
+import { AlertTriangle, FileCheck, Users, Settings, RefreshCw, ChevronRight, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -68,10 +68,30 @@ const moduleCards = [
 export default function Home() {
   const [counts, setCounts] = useState<AlertCounts>({ stalled: 0, scorecard: 0, referral: 0 });
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [queryResponse, setQueryResponse] = useState<string | null>(null);
+
+  const autoRefreshDone = useRef(false);
 
   useEffect(() => {
     fetchCounts();
   }, []);
+
+  // Auto-refresh once when alerts are empty (agent hasn't run yet)
+  useEffect(() => {
+    if (loading || autoRefreshDone.current) return;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    fetch(`${apiUrl}/api/alerts/status`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.agentHasRun === false && counts.stalled === 0 && counts.scorecard === 0 && counts.referral === 0) {
+          autoRefreshDone.current = true;
+          handleRefresh();
+        }
+      })
+      .catch(() => {});
+  }, [loading, counts.stalled, counts.scorecard, counts.referral]);
 
   const fetchCounts = async () => {
     try {
@@ -89,15 +109,72 @@ export default function Home() {
     }
   };
 
+  const handleAgentQuery = async () => {
+    if (!query.trim()) return;
+    setQueryLoading(true);
+    setQueryResponse(null);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120_000);
+      const res = await fetch(`${apiUrl}/api/agent/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query.trim() }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const data = await res.json();
+      if (data.success) {
+        setQueryResponse(data.text);
+        if (data.summary) {
+          setCounts((c) => ({
+            ...c,
+            stalled: data.summary.stalled ?? c.stalled,
+            scorecard: data.summary.scorecard ?? c.scorecard,
+            referral: data.summary.referral ?? c.referral,
+          }));
+        }
+      } else {
+        setQueryResponse(`Error: ${data.details || data.error || 'Request failed'}`);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setQueryResponse('Request timed out. Try a simpler question.');
+      } else {
+        setQueryResponse(err instanceof Error ? err.message : 'Request failed');
+      }
+    } finally {
+      setQueryLoading(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      const data = await api.refreshAlerts();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90_000);
+      const res = await fetch(`${apiUrl}/api/alerts/refresh`, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const data = await res.json();
       if (data.success) {
         await fetchCounts();
+      } else if (res.status === 409) {
+        alert(data.hint || 'Refresh already in progress. Please wait.');
+      } else {
+        alert(data.details || data.error || 'Refresh failed');
       }
     } catch (err) {
-      console.error(err);
+      if (err instanceof Error && err.name === 'AbortError') {
+        alert('Refresh timed out after 90 seconds. Greenhouse API may be slow or unreachable.');
+      } else {
+        console.error(err);
+        alert('Refresh failed. Check console for details.');
+      }
     } finally {
       setLoading(false);
     }
@@ -147,6 +224,44 @@ export default function Home() {
           animate="show"
           className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
         >
+          {/* Agent query - natural language task input */}
+          <motion.div variants={item} className="sm:col-span-2 lg:col-span-3">
+            <Card className="border-2 border-indigo-200/60 bg-gradient-to-br from-indigo-50/50 to-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Ask the TA Agent</CardTitle>
+              <CardDescription>
+                Type a question or task. The agent will fetch pipeline data and use AI to answer.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Show me stalled referrals, Who's in the offer stage?, Summarize pipeline alerts"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAgentQuery()}
+                  className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  disabled={queryLoading}
+                />
+                <Button
+                  onClick={handleAgentQuery}
+                  disabled={queryLoading || !query.trim()}
+                  className="gap-2"
+                >
+                  <Send className={cn('h-4 w-4', queryLoading && 'animate-pulse')} />
+                  {queryLoading ? 'Thinking...' : 'Ask'}
+                </Button>
+              </div>
+              {queryResponse && (
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm whitespace-pre-wrap">
+                  {queryResponse}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          </motion.div>
+
           {moduleCards.map((card) => {
             const Icon = card.icon;
             const count = counts[card.type];

@@ -5,6 +5,33 @@ import { jobs, applications } from '../db/schema';
 
 const router = Router();
 
+router.get('/candidates/:id', async (req, res) => {
+  try {
+    const { hasGreenhouseApiKey } = await import('../store/settings.store');
+    if (!hasGreenhouseApiKey()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Greenhouse API key is not configured',
+        details: 'Add GREENHOUSE_API_KEY to backend/.env or save via Settings',
+      });
+    }
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({ success: false, error: 'Invalid candidate ID' });
+    }
+    const greenhouse = getGreenhouseService();
+    const candidate = await greenhouse.getCandidate(id);
+    res.json({ success: true, data: candidate });
+  } catch (error) {
+    console.error('Error fetching candidate:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch candidate',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 router.get('/test', async (req, res) => {
   try {
     const greenhouse = getGreenhouseService();

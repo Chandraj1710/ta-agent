@@ -5,6 +5,7 @@ import jobsRoutes from './routes/jobs.routes';
 import alertsRoutes from './routes/alerts.routes';
 import greenhouseRoutes from './routes/greenhouse.routes';
 import settingsRoutes from './routes/settings.routes';
+import agentRoutes from './routes/agent.routes';
 
 // Load environment variables
 dotenv.config();
@@ -33,6 +34,7 @@ app.use('/api/jobs', jobsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/greenhouse', greenhouseRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/agent', agentRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

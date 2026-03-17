@@ -12,6 +12,7 @@ export interface GreenhouseJob {
   status: string;
   department?: { id: number; name: string };
   departments?: Array<{ id: number; name: string }>;
+  offices?: Array<{ id: number; name: string; location?: { name?: string } }>;
   created_at: string;
   updated_at: string;
 }
@@ -23,10 +24,11 @@ export interface GreenhouseApplication {
   jobs?: Array<{ id: number; name: string }>;
   status: string;
   current_stage?: { id: number; name: string };
-  source?: { id: number; name: string };
+  source?: { id: number; name: string; public_name?: string };
   credited_to?: { id: number; name: string };
   referrer?: { id: number; name: string };
   recruiter?: { id: number; name: string };
+  location?: { address?: string } | null;
   created_at?: string;
   applied_at?: string;
   updated_at?: string;
@@ -68,30 +70,46 @@ export default class GreenhouseService {
     return 'Basic ' + Buffer.from(`${this.apiKey}:`).toString('base64');
   }
 
+  private static readonly REQUEST_TIMEOUT_MS = 25_000;
+
   private async request<T>(path: string, params?: Record<string, string>): Promise<T> {
     const url = new URL(path.replace(/^\//, ''), BASE_URL);
     if (params) {
       Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
     }
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: this.getAuthHeader(),
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Greenhouse API error ${res.status}: ${text}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), GreenhouseService.REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(url.toString(), {
+        headers: {
+          Authorization: this.getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Greenhouse API error ${res.status}: ${text}`);
+      }
+      return res.json() as Promise<T>;
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error(`Greenhouse API timeout after ${GreenhouseService.REQUEST_TIMEOUT_MS / 1000}s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
     }
-    return res.json() as Promise<T>;
   }
+
+  private static readonly MAX_PAGES = 20;
 
   private async requestPaginated<T>(path: string, params?: Record<string, string>): Promise<T[]> {
     const all: T[] = [];
     let page = 1;
     const perPage = 100;
     let hasMore = true;
-    while (hasMore) {
+    while (hasMore && page <= GreenhouseService.MAX_PAGES) {
       const p = { ...params, per_page: String(perPage), page: String(page) };
       const data = await this.request<T[]>(path, p);
       if (!Array.isArray(data) || data.length === 0) {
@@ -146,6 +164,16 @@ export default class GreenhouseService {
 
   async getScheduledInterviews(_applicationId?: number): Promise<Array<{ id: number; application_id: number; start: string }>> {
     return [];
+  }
+
+  /** Fetch job board sources. Use type.name === 'referrals' to identify referral source IDs. */
+  async getSources(): Promise<Array<{ id: number; name: string; type?: { id: number; name: string } }>> {
+    try {
+      const data = await this.request<unknown>('/sources', { per_page: '500', page: '1' });
+      return Array.isArray(data) ? data as Array<{ id: number; name: string; type?: { id: number; name: string } }> : [];
+    } catch {
+      return [];
+    }
   }
 
   async getJobStages(jobId: number): Promise<GreenhouseJobStage[]> {

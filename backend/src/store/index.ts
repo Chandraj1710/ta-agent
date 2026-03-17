@@ -12,6 +12,11 @@ export interface StoredAlert {
 }
 
 const memoryAlerts: StoredAlert[] = [];
+let lastRefreshAt: Date | null = null;
+
+export function getLastRefreshAt(): Date | null {
+  return lastRefreshAt;
+}
 
 export function getAlerts(type?: string): StoredAlert[] {
   const list = [...memoryAlerts].sort(
@@ -22,6 +27,7 @@ export function getAlerts(type?: string): StoredAlert[] {
 }
 
 export function setAlerts(alerts: Array<{ type: string; severity: string; payload: Record<string, unknown> }>): void {
+  lastRefreshAt = new Date();
   memoryAlerts.length = 0;
   for (const a of alerts) {
     memoryAlerts.push({

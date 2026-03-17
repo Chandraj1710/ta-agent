@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertPageLayout } from '@/components/alert-page-layout';
 import { api } from '@/lib/api';
+import { CandidateDetailModal } from '@/components/candidate-detail-modal';
 
 interface Alert {
   id: string;
@@ -22,6 +23,7 @@ interface Alert {
 export default function ReferralAlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
   useEffect(() => {
     fetchAlerts();
@@ -65,6 +67,7 @@ export default function ReferralAlertsPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-muted-foreground">No referral alerts. Run a refresh to sync.</p>
+            <p className="mt-2 text-xs text-muted-foreground">If you have older referral data, set REFERRAL_LOOKBACK_DAYS=365 in backend/.env and restart.</p>
             <Link href="/" className="mt-4">
               <Button variant="outline" size="sm" className="transition-all duration-200 hover:scale-[1.02]">
                 Refresh alerts from dashboard
@@ -97,13 +100,17 @@ export default function ReferralAlertsPage() {
               </thead>
               <tbody className="divide-y divide-border bg-card">
                 <AnimatePresence mode="popLayout">
-                  {alerts.map((a, i) => (
+                  {alerts.map((a, i) => {
+                    const candidateId = a.payload.candidateId as number | undefined;
+                    const isClickable = typeof candidateId === 'number';
+                    return (
                     <motion.tr
                       key={a.id}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.02 }}
-                      className="transition-colors hover:bg-muted/30"
+                      className={`transition-colors ${isClickable ? 'cursor-pointer hover:bg-muted/50' : 'hover:bg-muted/30'}`}
+                      onClick={() => isClickable && setSelectedAlert(a)}
                     >
                       <td className="px-6 py-4 text-sm font-medium text-foreground">
                         {String(a.payload.candidateName || '-')}
@@ -121,13 +128,20 @@ export default function ReferralAlertsPage() {
                         {getSubTypeBadge(String(a.payload.subType || '-'))}
                       </td>
                     </motion.tr>
-                  ))}
+                  );
+                  })}
                 </AnimatePresence>
               </tbody>
             </table>
           </div>
         </Card>
       )}
+
+      <CandidateDetailModal
+        candidateId={selectedAlert?.payload?.candidateId as number | undefined ?? null}
+        alertPayload={selectedAlert?.payload ?? {}}
+        onClose={() => setSelectedAlert(null)}
+      />
     </AlertPageLayout>
   );
 }

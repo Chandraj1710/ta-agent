@@ -27,6 +27,8 @@ export class StalledPipelineAgent {
             severity: daysInStage > sla * 2 ? 'critical' : 'warning',
             payload: {
               subType: 'stage_sla',
+              candidateId: app.candidateId,
+              applicationId: app.id,
               candidateName: app.candidateName || `Candidate ${app.candidateId}`,
               jobTitle: app.jobTitle || `Job ${app.jobId}`,
               currentStage: stageName,
@@ -48,6 +50,8 @@ export class StalledPipelineAgent {
             severity: 'warning',
             payload: {
               subType: 'offer_no_response',
+              candidateId: app.candidateId,
+              applicationId: app.id,
               candidateName: app.candidateName || `Candidate ${app.candidateId}`,
               jobTitle: app.jobTitle || `Job ${app.jobId}`,
               daysSinceOffer,

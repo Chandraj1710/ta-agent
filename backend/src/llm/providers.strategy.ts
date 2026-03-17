@@ -73,7 +73,7 @@ export class LLMProviderFactory {
       {
         id: 'gemini',
         name: 'Google Gemini',
-        models: ['gemini-pro', 'gemini-pro-vision'],
+        models: ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'],
         pricing: 'Free tier available',
         speed: 'Fast',
         quality: 'Excellent',
@@ -163,9 +163,13 @@ class GeminiProvider implements ILLMProvider {
 
   async invoke(messages: BaseMessage[]): Promise<LLMResponse> {
     const { ChatGoogleGenerativeAI } = await import("@langchain/google-genai");
-    
+    // gemini-1.5-flash deprecated Apr 2025; use gemini-2.0-flash or gemini-2.5-flash
+    const deprecated = ['gemini-pro', 'gemini-pro-vision', 'gemini-1.5-flash'];
+    const modelName = deprecated.includes(this.config.model)
+      ? 'gemini-2.0-flash'
+      : this.config.model;
     const llm = new ChatGoogleGenerativeAI({
-      modelName: this.config.model,
+      modelName,
       temperature: this.config.temperature || 0.7,
       maxOutputTokens: this.config.maxTokens,
       apiKey: this.config.apiKey,

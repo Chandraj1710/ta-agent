@@ -4,6 +4,8 @@
 
 export interface AgentState {
   jobs: Array<{ id: number; title: string; lastActivityAt?: string }>;
+  /** Source IDs from GET /sources where type.name === 'referrals' */
+  referralSourceIds?: number[];
   applications: Array<{
     id: number;
     jobId: number;
@@ -12,6 +14,8 @@ export interface AgentState {
     enteredAt?: string;
     status: string;
     referrerId?: number;
+    sourceId?: number;
+    sourceName?: string;
     recruiterId?: number;
     hiringManagerId?: number;
     candidateName?: string;
@@ -23,7 +27,7 @@ export interface AgentState {
 }
 
 export interface Alert {
-  type: 'stalled' | 'scorecard' | 'referral';
+  type: 'stalled' | 'scorecard' | 'referral' | 'open';
   severity: 'warning' | 'critical';
   payload: Record<string, unknown>;
 }
