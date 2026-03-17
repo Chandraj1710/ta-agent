@@ -2,10 +2,24 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Settings, Brain, Check, X, Loader, Zap, DollarSign, 
-  Globe, Lock, ArrowLeft, Briefcase
+import { motion } from 'framer-motion';
+import {
+  Settings,
+  Brain,
+  Check,
+  X,
+  Loader,
+  Zap,
+  ArrowLeft,
+  Briefcase,
+  Globe,
+  Lock,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Provider {
   id: string;
@@ -114,13 +128,9 @@ export default function SettingsPage() {
 
   const fetchProviders = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm/providers`
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm/providers`);
       const data = await response.json();
-      if (data.success) {
-        setProviders(data.data);
-      }
+      if (data.success) setProviders(data.data);
     } catch (error) {
       console.error('Error fetching providers:', error);
     }
@@ -128,9 +138,7 @@ export default function SettingsPage() {
 
   const fetchCurrentSettings = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm`
-      );
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm`);
       const data = await response.json();
       if (data.success) {
         setCurrentSettings(data.data);
@@ -147,7 +155,7 @@ export default function SettingsPage() {
 
   const handleProviderChange = (providerId: string) => {
     setSelectedProvider(providerId);
-    const provider = providers.find(p => p.id === providerId);
+    const provider = providers.find((p) => p.id === providerId);
     if (provider && provider.models.length > 0) {
       setSelectedModel(provider.models[0]);
     }
@@ -157,22 +165,17 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setTestResult(null);
-    
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: selectedProvider,
-            model: selectedModel,
-            apiKey: apiKey || undefined,
-            temperature
-          })
-        }
-      );
-
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          model: selectedModel,
+          apiKey: apiKey || undefined,
+          temperature,
+        }),
+      });
       const data = await response.json();
       if (data.success) {
         alert('✅ Settings saved successfully!');
@@ -191,28 +194,20 @@ export default function SettingsPage() {
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
-    
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm/test`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: selectedProvider,
-            model: selectedModel,
-            apiKey: apiKey || undefined,
-            temperature
-          })
-        }
-      );
-
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          model: selectedModel,
+          apiKey: apiKey || undefined,
+          temperature,
+        }),
+      });
       const data = await response.json();
       setTestResult(data.success ? 'success' : 'error');
-      
-      if (data.success) {
-        setTimeout(() => setTestResult(null), 3000);
-      }
+      if (data.success) setTimeout(() => setTestResult(null), 3000);
     } catch (error) {
       console.error('Error testing connection:', error);
       setTestResult('error');
@@ -221,321 +216,317 @@ export default function SettingsPage() {
     }
   };
 
-  const selectedProviderData = providers.find(p => p.id === selectedProvider);
+  const selectedProviderData = providers.find((p) => p.id === selectedProvider);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader className="animate-spin h-12 w-12 text-blue-500 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading settings...</p>
+      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-gradient-to-b from-slate-50/80 to-background">
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <Skeleton className="h-4 w-32" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                  <Settings className="w-8 h-8 text-blue-600" />
-                  LLM Settings
-                </h1>
-                <p className="text-gray-600 mt-1">Choose your AI provider and configure settings</p>
-              </div>
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-slate-50/80 to-background">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-8"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/')}
+            className="-ml-2 mb-6 gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+              <Settings className="h-6 w-6 text-primary" />
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Greenhouse API Key - Required for data */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Briefcase className="w-6 h-6 text-indigo-600" />
-            Greenhouse API Key
-            {greenhouseConfigured && (
-              <span className="text-sm font-normal text-green-600">(configured)</span>
-            )}
-          </h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Required for jobs, alerts, and all TA modules. Get your key from Greenhouse: Configure → Dev Center → API Credential Management.
-          </p>
-          <div className="flex gap-4">
-            <input
-              type="password"
-              value={greenhouseApiKey}
-              onChange={(e) => setGreenhouseApiKey(e.target.value)}
-              placeholder="Enter your Greenhouse API key"
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            <button
-              onClick={handleTestGreenhouse}
-              disabled={greenhouseTesting || !greenhouseApiKey.trim()}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {greenhouseTesting ? <Loader className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
-              Test
-            </button>
-            <button
-              onClick={handleSaveGreenhouse}
-              disabled={greenhouseSaving || !greenhouseApiKey.trim()}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {greenhouseSaving ? <Loader className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-              Save
-            </button>
-          </div>
-          {greenhouseTestResult && (
-            <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${
-              greenhouseTestResult === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-            }`}>
-              {greenhouseTestResult === 'success' ? (
-                <><Check className="w-5 h-5" /> Greenhouse connected!</>
-              ) : (
-                <><X className="w-5 h-5" /> Connection failed. Check your API key.</>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Info Banner */}
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-r-lg">
-          <div className="flex items-start gap-3">
-            <Brain className="w-5 h-5 text-blue-600 mt-0.5" />
             <div>
-              <p className="text-sm text-blue-900 font-medium">Multiple LLM Support</p>
-              <p className="text-sm text-blue-700 mt-1">
-                Choose between paid (OpenAI) and free options (Gemini, Groq, Ollama) based on your needs!
-              </p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                Settings
+              </h1>
+              <p className="mt-1 text-muted-foreground">{'LLM provider & Greenhouse API configuration'}</p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Provider Selection */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Select AI Provider</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {providers.map((provider) => (
-              <button
-                key={provider.id}
-                onClick={() => handleProviderChange(provider.id)}
-                className={`p-4 border-2 rounded-xl text-left transition-all ${
-                  selectedProvider === provider.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{provider.name}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{provider.pricing}</p>
-                  </div>
-                  {provider.freeOption && (
-                    <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
-                      FREE
-                    </span>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+          className="space-y-6"
+        >
+          {/* Greenhouse API */}
+          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-primary" />
+                Greenhouse API Key
+                {greenhouseConfigured && (
+                  <Badge variant="outline" className="ml-2 border-emerald-300 bg-emerald-50 text-emerald-700">
+                    Configured
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Required for jobs, alerts, and all TA modules. Get your key from Greenhouse: Configure → Dev Center → API Credential Management.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-3">
+                <Input
+                  type="password"
+                  value={greenhouseApiKey}
+                  onChange={(e) => setGreenhouseApiKey(e.target.value)}
+                  placeholder="Enter your Greenhouse API key"
+                  className="flex-1 transition-all duration-200 focus:ring-2"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleTestGreenhouse}
+                  disabled={greenhouseTesting || !greenhouseApiKey.trim()}
+                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
+                >
+                  {greenhouseTesting ? <Loader className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                  Test
+                </Button>
+                <Button
+                  onClick={handleSaveGreenhouse}
+                  disabled={greenhouseSaving || !greenhouseApiKey.trim()}
+                  className="gap-2 transition-all duration-200 hover:scale-[1.02]"
+                >
+                  {greenhouseSaving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Save
+                </Button>
+              </div>
+              {greenhouseTestResult && (
+                <div
+                  className={`flex items-center gap-2 rounded-lg p-3 text-sm ${
+                    greenhouseTestResult === 'success'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'bg-destructive/10 text-destructive'
+                  }`}
+                >
+                  {greenhouseTestResult === 'success' ? (
+                    <><Check className="h-4 w-4" /> Greenhouse connected!</>
+                  ) : (
+                    <><X className="h-4 w-4" /> Connection failed. Check your API key.</>
                   )}
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2 text-xs mt-3">
-                  <div className="flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-gray-500" />
-                    <span className="text-gray-600">{provider.speed}</span>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* LLM Info Banner */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-start gap-3 pt-6">
+              <Brain className="h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium text-foreground">Multiple LLM Support</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose between paid (OpenAI) and free options (Gemini, Groq, Ollama) based on your needs!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Provider Selection */}
+          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
+            <CardHeader>
+              <CardTitle>Select AI Provider</CardTitle>
+              <CardDescription>Choose your preferred LLM provider and model</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {providers.map((provider) => (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    onClick={() => handleProviderChange(provider.id)}
+                    className={`flex flex-col rounded-xl border-2 p-4 text-left transition-all duration-200 hover:scale-[1.01] ${
+                      selectedProvider === provider.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-foreground">{provider.name}</h3>
+                        <p className="text-sm text-muted-foreground">{provider.pricing}</p>
+                      </div>
+                      {provider.freeOption && (
+                        <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
+                          FREE
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Zap className="h-3 w-3" /> {provider.speed}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Brain className="h-3 w-3" /> {provider.quality}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {selectedProviderData && (
+                <>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Model</label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      {selectedProviderData.models.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Brain className="w-3 h-3 text-gray-500" />
-                    <span className="text-gray-600">{provider.quality}</span>
+
+                  {selectedProviderData.requiresApiKey && (
+                    <div>
+                      <label className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Lock className="h-4 w-4" />
+                        API Key
+                        {selectedProviderData.freeOption && (
+                          <span className="text-xs text-emerald-600">(Free tier available)</span>
+                        )}
+                      </label>
+                      <Input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder="Enter your API key"
+                        className="transition-all duration-200 focus:ring-2"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Get your API key from:{' '}
+                        {selectedProvider === 'openai' && 'platform.openai.com'}
+                        {selectedProvider === 'gemini' && 'makersuite.google.com/app/apikey'}
+                        {selectedProvider === 'claude' && 'console.anthropic.com'}
+                        {selectedProvider === 'groq' && 'console.groq.com'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">
+                      Temperature: {temperature}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={temperature}
+                      onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                      className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary"
+                    />
+                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                      <span>More Consistent</span>
+                      <span>More Creative</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {currentSettings && (
+                <div className="rounded-lg bg-muted/50 p-4">
+                  <h3 className="mb-2 font-medium text-foreground">Current Active Settings</h3>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p>Provider: <span className="font-medium text-foreground">{currentSettings.provider}</span></p>
+                    <p>Model: <span className="font-medium text-foreground">{currentSettings.model}</span></p>
+                    <p>Temperature: <span className="font-medium text-foreground">{currentSettings.temperature}</span></p>
                   </div>
                 </div>
-              </button>
-            ))}
-          </div>
+              )}
 
-          {/* Model Selection */}
-          {selectedProviderData && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Model
-              </label>
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {selectedProviderData.models.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleTest}
+                  disabled={testing || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
+                  className="flex-1 gap-2 transition-all duration-200 hover:scale-[1.02]"
+                >
+                  {testing ? <Loader className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                  Test Connection
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
+                  className="flex-1 gap-2 transition-all duration-200 hover:scale-[1.02]"
+                >
+                  {saving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Save Settings
+                </Button>
+              </div>
 
-          {/* API Key Input */}
-          {selectedProviderData?.requiresApiKey && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                API Key
-                {selectedProviderData.freeOption && (
-                  <span className="text-green-600 text-xs">(Free tier available)</span>
-                )}
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your API key"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Get your API key from: 
-                {selectedProvider === 'openai' && ' platform.openai.com'}
-                {selectedProvider === 'gemini' && ' makersuite.google.com/app/apikey'}
-                {selectedProvider === 'claude' && ' console.anthropic.com'}
-                {selectedProvider === 'groq' && ' console.groq.com'}
-              </p>
-            </div>
-          )}
+              {testResult && (
+                <div
+                  className={`flex items-center gap-3 rounded-lg p-4 ${
+                    testResult === 'success'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'bg-destructive/10 text-destructive'
+                  }`}
+                >
+                  {testResult === 'success' ? (
+                    <><Check className="h-5 w-5" /> Connection successful! LLM is working perfectly.</>
+                  ) : (
+                    <><X className="h-5 w-5" /> Connection failed. Check your API key and try again.</>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Temperature Slider */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Temperature: {temperature}
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.1"
-              value={temperature}
-              onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>More Consistent</span>
-              <span>More Creative</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Current Settings */}
-        {currentSettings && (
-          <div className="bg-gray-50 rounded-xl p-4 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">Current Active Settings:</h3>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>• Provider: <span className="font-medium">{currentSettings.provider}</span></p>
-              <p>• Model: <span className="font-medium">{currentSettings.model}</span></p>
-              <p>• Temperature: <span className="font-medium">{currentSettings.temperature}</span></p>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-4">
-          <button
-            onClick={handleTest}
-            disabled={testing || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
-            className="flex-1 bg-gray-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-gray-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {testing ? (
-              <>
-                <Loader className="animate-spin w-5 h-5" />
-                Testing...
-              </>
-            ) : (
-              <>
-                <Globe className="w-5 h-5" />
-                Test Connection
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={handleSave}
-            disabled={saving || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {saving ? (
-              <>
-                <Loader className="animate-spin w-5 h-5" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Check className="w-5 h-5" />
-                Save Settings
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Test Result */}
-        {testResult && (
-          <div className={`mt-4 p-4 rounded-lg flex items-center gap-3 ${
-            testResult === 'success' 
-              ? 'bg-green-50 text-green-800 border border-green-200' 
-              : 'bg-red-50 text-red-800 border border-red-200'
-          }`}>
-            {testResult === 'success' ? (
-              <>
-                <Check className="w-5 h-5" />
-                <span className="font-medium">✅ Connection successful! LLM is working perfectly.</span>
-              </>
-            ) : (
-              <>
-                <X className="w-5 h-5" />
-                <span className="font-medium">❌ Connection failed. Check your API key and try again.</span>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Help Section */}
-        <div className="mt-8 bg-white rounded-xl shadow-md p-6">
-          <h3 className="font-bold text-gray-900 mb-4">💡 Quick Guide</h3>
-          
-          <div className="space-y-4 text-sm">
-            <div>
-              <h4 className="font-semibold text-gray-800">Free Options:</h4>
-              <ul className="list-disc list-inside text-gray-600 mt-2 space-y-1">
-                <li><strong>Google Gemini</strong>: Free tier, excellent quality</li>
-                <li><strong>Groq</strong>: Free, very fast responses</li>
-                <li><strong>Ollama</strong>: Run locally, completely free (requires installation)</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-gray-800">Paid Options:</h4>
-              <ul className="list-disc list-inside text-gray-600 mt-2 space-y-1">
-                <li><strong>OpenAI GPT-4</strong>: Best quality, moderate cost</li>
-                <li><strong>Anthropic Claude</strong>: Excellent quality, free tier available</li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-gray-800">Temperature Guide:</h4>
-              <ul className="list-disc list-inside text-gray-600 mt-2 space-y-1">
-                <li><strong>0.0 - 0.3</strong>: Consistent, factual responses (good for code analysis)</li>
-                <li><strong>0.4 - 0.7</strong>: Balanced (recommended)</li>
-                <li><strong>0.8 - 2.0</strong>: Creative, varied responses</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+          {/* Quick Guide */}
+          <Card className="border-0 shadow-md">
+            <CardHeader>
+              <CardTitle>Quick Guide</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <h4 className="font-semibold text-foreground">Free Options</h4>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  <li><strong>Google Gemini</strong>: Free tier, excellent quality</li>
+                  <li><strong>Groq</strong>: Free, very fast responses</li>
+                  <li><strong>Ollama</strong>: Run locally, completely free</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-foreground">Paid Options</h4>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  <li><strong>OpenAI GPT-4</strong>: Best quality, moderate cost</li>
+                  <li><strong>Anthropic Claude</strong>: Excellent quality, free tier available</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-foreground">Temperature Guide</h4>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  <li><strong>0.0 - 0.3</strong>: Consistent, factual responses</li>
+                  <li><strong>0.4 - 0.7</strong>: Balanced (recommended)</li>
+                  <li><strong>0.8 - 2.0</strong>: Creative, varied responses</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );

@@ -1,0 +1,70 @@
+---
+description: Frontend UI/UX standards - React, Tailwind, shadcn/ui, animations
+globs: frontend/**/*.tsx
+alwaysApply: false
+---
+
+# Frontend UI/UX Standards
+
+You are a senior frontend engineer and UI/UX designer specializing in React, Tailwind CSS, shadcn/ui, and modern UI animations. Build production-quality interfaces that feel handcrafted — NOT generic or AI-generated.
+
+## Core Principles
+
+* Prioritize clean, modern, premium design
+* Avoid generic layouts and repetitive patterns
+* Add thoughtful spacing, alignment, and visual hierarchy
+* Every UI should feel intentional and polished
+
+## Component Rules
+
+* ALWAYS use shadcn/ui components from `@/components/ui`
+* NEVER recreate components that already exist
+* Compose components creatively for unique layouts
+* Enhance default styles — do not rely on defaults only
+
+## Styling Guidelines
+
+* Use Tailwind CSS utilities for all styling
+* Follow consistent spacing (gap-4, p-6, m-4)
+* Use subtle color variations, not just grayscale
+* Create depth with shadows, borders, background layers
+* Avoid flat, lifeless UI
+
+## Animation & Interaction (CRITICAL)
+
+* Use subtle, smooth animations — never overdo
+* Prefer: `transition-all duration-200 ease-in-out`, `hover:scale-105`, `hover:shadow-md`
+* Use opacity and translate transitions
+* Micro-interactions: button hover feedback, card hover elevation, input focus
+* Use framer-motion when needed (motion.div, AnimatePresence)
+* Animations: natural, fast, purposeful — not flashy
+
+## Avoid "AI-Generated Look"
+
+* Do NOT stack identical cards without variation
+* Do NOT use overly symmetrical/rigid layouts everywhere
+* Avoid excessive purposeless whitespace
+* Avoid default Tailwind without refinement
+* Add small asymmetries and variations for realism
+
+## Layout & UX
+
+* Mix grid + flex for proper composition
+* Break monotony with sections, grouping, hierarchy
+* Meaningful headings and supporting text
+* Responsive design across screen sizes
+* Strong visual flow top to bottom
+
+## Code Quality
+
+* Clean, modular React components
+* Functional components with hooks
+* TypeScript preferred
+* Reusable, readable components
+
+## Build Order
+
+1. Decide layout structure
+2. Choose shadcn components
+3. Enhance with Tailwind
+4. Add subtle animations
