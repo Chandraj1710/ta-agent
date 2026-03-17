@@ -33,6 +33,7 @@ export class ReferralAgent {
             daysSinceReferral,
             currentStage: app.stageName,
             referrerId: app.referrerId,
+            recruiters: app.recruiterId ? `Recruiter ${app.recruiterId}` : undefined,
           },
         });
       } else if (!isInitialStage && daysSinceReferral >= 5) {
@@ -46,6 +47,7 @@ export class ReferralAgent {
             daysSinceReferral,
             currentStage: app.stageName,
             referrerId: app.referrerId,
+            recruiters: app.recruiterId ? `Recruiter ${app.recruiterId}` : undefined,
           },
         });
       }

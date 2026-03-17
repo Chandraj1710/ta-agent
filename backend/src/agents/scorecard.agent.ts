@@ -49,6 +49,7 @@ export class ScorecardAgent {
           hoursSinceInterview: Math.round(hours),
           escalateToTALeader: hours >= SCORECARD_ESCALATE_HOURS,
           recruiterId: iv.recruiterId,
+          recruiters: iv.recruiterId ? `Recruiter ${iv.recruiterId}` : undefined,
         },
       });
     }

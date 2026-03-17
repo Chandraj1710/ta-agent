@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 
 interface AlertCounts {
   stalled: number;
@@ -74,8 +75,7 @@ export default function Home() {
 
   const fetchCounts = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts`);
-      const data = await res.json();
+      const data = await api.getAlerts();
       if (data.success && Array.isArray(data.data)) {
         const stalled = data.data.filter((a: { type: string }) => a.type === 'stalled').length;
         const scorecard = data.data.filter((a: { type: string }) => a.type === 'scorecard').length;
@@ -92,8 +92,7 @@ export default function Home() {
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts/refresh`, { method: 'POST' });
-      const data = await res.json();
+      const data = await api.refreshAlerts();
       if (data.success) {
         await fetchCounts();
       }

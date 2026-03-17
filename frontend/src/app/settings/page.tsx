@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 
 interface Provider {
   id: string;
@@ -72,35 +73,21 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchProviders();
     fetchGreenhouseStatus();
-
-    // Show page immediately with defaults; fetch saved settings in background
     setLoading(false);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/settings/llm`, {
-      signal: controller.signal,
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data) {
-          setCurrentSettings(data.data);
-          setSelectedProvider(data.data.provider);
-          setSelectedModel(data.data.model);
-          setTemperature(data.data.temperature ?? 0.7);
-        }
-      })
-      .catch(() => {
-        // Backend offline - keep defaults
-      })
-      .finally(() => clearTimeout(timeoutId));
+    api.getSettingsLlm().then((data) => {
+      if (data.success && data.data) {
+        setCurrentSettings(data.data);
+        setSelectedProvider(data.data.provider);
+        setSelectedModel(data.data.model);
+        setTemperature(data.data.temperature ?? 0.7);
+      }
+    });
   }, []);
 
   const fetchGreenhouseStatus = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/greenhouse`);
-      const data = await res.json();
+      const data = await api.getSettingsGreenhouse();
       if (data.success && data.data?.configured) setGreenhouseConfigured(true);
     } catch (e) {
       console.error(e);
@@ -112,12 +99,7 @@ export default function SettingsPage() {
     setGreenhouseSaving(true);
     setGreenhouseTestResult(null);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/greenhouse`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: greenhouseApiKey.trim() }),
-      });
-      const data = await res.json();
+      const data = await api.postSettingsGreenhouse({ apiKey: greenhouseApiKey.trim() });
       if (data.success) {
         setGreenhouseConfigured(true);
         alert('✅ Greenhouse API key saved! You can now refresh alerts on the dashboard.');
@@ -141,12 +123,7 @@ export default function SettingsPage() {
     setGreenhouseTesting(true);
     setGreenhouseTestResult(null);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/greenhouse/test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key }),
-      });
-      const data = await res.json();
+      const data = await api.postSettingsGreenhouseTest({ apiKey: key });
       setGreenhouseTestResult(data.success ? 'success' : 'error');
       if (data.success) {
         setGreenhouseConfigured(true);
@@ -163,13 +140,10 @@ export default function SettingsPage() {
   const fetchProviders = async () => {
     try {
       setProvidersError(null);
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${baseUrl}/api/settings/llm/providers`);
-      const data = await response.json();
+      const data = await api.getSettingsProviders();
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         setProviders(data.data);
       }
-      // Keep DEFAULT_PROVIDERS when backend fails or returns empty
     } catch (error) {
       console.error('Error fetching providers:', error);
       setProvidersError('Backend offline — you can still choose providers. Save/Test will work when backend is running.');
@@ -178,9 +152,7 @@ export default function SettingsPage() {
 
   const fetchCurrentSettings = async () => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${baseUrl}/api/settings/llm`);
-      const data = await response.json();
+      const data = await api.getSettingsLlm();
       if (data.success && data.data) {
         setCurrentSettings(data.data);
         setSelectedProvider(data.data.provider);
@@ -207,17 +179,12 @@ export default function SettingsPage() {
     setSaving(true);
     setTestResult(null);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: selectedProvider,
-          model: selectedModel,
-          apiKey: apiKey || undefined,
-          temperature,
-        }),
+      const data = await api.postSettingsLlm({
+        provider: selectedProvider,
+        model: selectedModel,
+        apiKey: apiKey || undefined,
+        temperature,
       });
-      const data = await response.json();
       if (data.success) {
         alert('✅ Settings saved successfully!');
         await fetchCurrentSettings();
@@ -236,17 +203,12 @@ export default function SettingsPage() {
     setTesting(true);
     setTestResult(null);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm/test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: selectedProvider,
-          model: selectedModel,
-          apiKey: apiKey || undefined,
-          temperature,
-        }),
+      const data = await api.postSettingsLlmTest({
+        provider: selectedProvider,
+        model: selectedModel,
+        apiKey: apiKey || undefined,
+        temperature,
       });
-      const data = await response.json();
       setTestResult(data.success ? 'success' : 'error');
       if (data.success) setTimeout(() => setTestResult(null), 3000);
     } catch (error) {

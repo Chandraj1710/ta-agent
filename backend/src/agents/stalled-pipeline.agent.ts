@@ -34,6 +34,7 @@ export class StalledPipelineAgent {
               sla,
               recruiterId: app.recruiterId,
               hiringManagerId: app.hiringManagerId,
+              recruiters: app.recruiterId ? `Recruiter ${app.recruiterId}` : undefined,
             },
           });
         }
@@ -51,6 +52,7 @@ export class StalledPipelineAgent {
               jobTitle: app.jobTitle || `Job ${app.jobId}`,
               daysSinceOffer,
               recruiterId: app.recruiterId,
+              recruiters: app.recruiterId ? `Recruiter ${app.recruiterId}` : undefined,
             },
           });
         }

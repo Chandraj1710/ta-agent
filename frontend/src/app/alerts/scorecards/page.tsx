@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertPageLayout } from '@/components/alert-page-layout';
+import { api } from '@/lib/api';
 
 interface Alert {
   id: string;
@@ -27,8 +28,7 @@ export default function ScorecardAlertsPage() {
 
   const fetchAlerts = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alerts?type=scorecard`);
-      const data = await res.json();
+      const data = await api.getAlerts('scorecard');
       setAlerts(data.success ? data.data : []);
     } catch (err) {
       console.error(err);
@@ -80,6 +80,9 @@ export default function ScorecardAlertsPage() {
                     Job
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Recruiters
+                  </th>
+                  <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Interview Date
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -105,6 +108,9 @@ export default function ScorecardAlertsPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
                         {String(a.payload.jobTitle || '-')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                        {String(a.payload.recruiters || '-')}
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
                         {String(a.payload.interviewDate || '-')}

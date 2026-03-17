@@ -34,6 +34,23 @@ cd frontend && npm run dev
 
 **Without a database**: Alerts are stored in memory. Jobs are fetched live from Greenhouse. Everything works.
 
+## Demo Mode (no backend required)
+
+Run the frontend alone to explore the full UI with mock data:
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+Open http://localhost:3000. The app automatically uses mock data when the backend is unavailable. You can:
+
+- View dashboard with alert counts (4 stalled, 2 scorecard, 2 referral)
+- Browse Module 1 (Stalled Pipeline), Module 2 (Scorecards), Module 3 (Referrals)
+- Configure LLM providers and models in Settings
+- Click "Refresh Alerts" (returns mock data)
+
+A **Demo** badge appears in the navbar when using mock data. To force mock mode: `NEXT_PUBLIC_USE_MOCK=true npm run dev`
+
 ## Optional: PostgreSQL (for sync)
 
 To use `GET /api/greenhouse/sync` (cache jobs/applications in DB):

@@ -1,11 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { AlertTriangle, FileCheck, Users, Settings, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isUsingMockData } from '@/lib/api';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,6 +19,18 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const [mockMode, setMockMode] = useState(false);
+
+  useEffect(() => {
+    setMockMode(isUsingMockData());
+    const check = () => setMockMode(isUsingMockData());
+    window.addEventListener('storage', check);
+    window.addEventListener('ta-agent-mock-changed', check);
+    return () => {
+      window.removeEventListener('storage', check);
+      window.removeEventListener('ta-agent-mock-changed', check);
+    };
+  }, [pathname]);
 
   return (
     <motion.header
@@ -36,6 +50,11 @@ export function Navbar() {
           <span className="font-semibold tracking-tight text-foreground">
             TA Ops Agent
           </span>
+          {mockMode && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              Demo
+            </span>
+          )}
         </Link>
 
         <nav className="flex items-center gap-1">
