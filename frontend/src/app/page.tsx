@@ -64,7 +64,16 @@ export default function Home() {
             <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
               Pipeline alerts, scorecard accountability, and referral follow-up for Talent Acquisition.
             </p>
+            <p className="text-sm text-blue-100 mb-4">
+              Add your Greenhouse API key in Settings to fetch jobs and alerts.
+            </p>
             <div className="flex justify-center gap-6 mb-6">
+              <Link
+                href="/settings"
+                className="bg-amber-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-600 transition-colors shadow-lg"
+              >
+                Add Greenhouse API Key
+              </Link>
               <Link
                 href="/alerts/stalled"
                 className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg"

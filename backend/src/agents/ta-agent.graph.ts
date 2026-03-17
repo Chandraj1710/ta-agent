@@ -5,12 +5,10 @@
 
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { AgentState } from './types';
-import GreenhouseService from '../services/greenhouse.service';
+import { getGreenhouseService } from '../services/greenhouse.factory';
 import { StalledPipelineAgent } from './stalled-pipeline.agent';
 import { ScorecardAgent } from './scorecard.agent';
 import { ReferralAgent } from './referral.agent';
-
-const greenhouse = new GreenhouseService();
 const stalledAgent = new StalledPipelineAgent();
 const scorecardAgent = new ScorecardAgent();
 const referralAgent = new ReferralAgent();
@@ -31,6 +29,7 @@ export class TAAgentGraph {
     });
 
     workflow.addNode('fetch_greenhouse_data', async () => {
+      const greenhouse = getGreenhouseService();
       const [jobs, applications, scorecards] = await Promise.all([
         greenhouse.getJobs('open'),
         greenhouse.getApplications(undefined, 'active'),

@@ -57,6 +57,9 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🤖 TA Ops Agent ready!`);
+  if (!process.env.DATABASE_URL) {
+    console.log(`📦 Running without database - alerts in memory, jobs from Greenhouse API`);
+  }
 });
 
 export default app;

@@ -1,11 +1,23 @@
+/**
+ * Database - only initialized when DATABASE_URL is set.
+ * Run without DATABASE_URL: alerts use in-memory store, jobs fetch from Greenhouse API.
+ */
+
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+let _db: ReturnType<typeof drizzle> | null = null;
 
-export const db = drizzle(pool, { schema });
+export function getDb() {
+  if (!process.env.DATABASE_URL) return null;
+  if (!_db) {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    _db = drizzle(pool, { schema });
+  }
+  return _db;
+}
 
-export type Database = typeof db;
+export function hasDatabase(): boolean {
+  return !!process.env.DATABASE_URL;
+}

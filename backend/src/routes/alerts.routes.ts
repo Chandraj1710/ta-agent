@@ -1,20 +1,13 @@
 import { Router } from 'express';
-import { db } from '../db';
-import { alerts } from '../db/schema';
 import { createTAAgent } from '../agents/ta-agent.graph';
-import { eq, desc } from 'drizzle-orm';
+import * as store from '../store';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
   try {
     const { type } = req.query;
-    let query = db.select().from(alerts).orderBy(desc(alerts.createdAt));
-    const rows = await query;
-    let data = rows;
-    if (typeof type === 'string' && type) {
-      data = rows.filter((r) => r.type === type);
-    }
+    const data = store.getAlerts(typeof type === 'string' ? type : undefined);
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching alerts:', error);
@@ -26,20 +19,13 @@ router.post('/refresh', async (req, res) => {
   try {
     const agent = createTAAgent();
     const result = await agent.run();
-
-    await db.delete(alerts);
-    for (const a of result.alerts || []) {
-      await db.insert(alerts).values({
-        type: a.type,
-        severity: a.severity,
-        payload: a.payload as Record<string, unknown>,
-      });
-    }
+    const alerts = result.alerts || [];
+    store.setAlerts(alerts.map((a) => ({ type: a.type, severity: a.severity, payload: a.payload })));
 
     res.json({
       success: true,
       message: 'Alerts refreshed',
-      count: result.alerts?.length ?? 0,
+      count: alerts.length,
     });
   } catch (error) {
     console.error('Error refreshing alerts:', error);

@@ -1,8 +1,71 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { LLMProviderFactory, LLMSettingsManager, LLMConfig } from '../llm/providers.strategy';
+import { getGreenhouseApiKey, setGreenhouseApiKey } from '../store/settings.store';
+import { getGreenhouseService } from '../services/greenhouse.factory';
 
 const router = Router();
+
+/**
+ * Get Greenhouse API key status (masked)
+ * GET /api/settings/greenhouse
+ */
+router.get('/greenhouse', (req, res) => {
+  const key = getGreenhouseApiKey();
+  res.json({
+    success: true,
+    data: {
+      configured: !!key,
+      masked: key ? '***' + key.slice(-4) : undefined,
+    },
+  });
+});
+
+/**
+ * Save Greenhouse API key
+ * POST /api/settings/greenhouse
+ */
+router.post('/greenhouse', (req, res) => {
+  const { apiKey } = req.body || {};
+  if (typeof apiKey !== 'string' || !apiKey.trim()) {
+    return res.status(400).json({ success: false, error: 'API key is required' });
+  }
+  setGreenhouseApiKey(apiKey.trim());
+  res.json({
+    success: true,
+    message: 'Greenhouse API key saved',
+    data: { masked: '***' + apiKey.slice(-4) },
+  });
+});
+
+/**
+ * Test Greenhouse connection
+ * POST /api/settings/greenhouse/test
+ */
+router.post('/greenhouse/test', async (req, res) => {
+  const { apiKey } = req.body || {};
+  const key = apiKey ? String(apiKey).trim() : getGreenhouseApiKey();
+  if (!key) {
+    return res.status(400).json({
+      success: false,
+      error: 'Add your Greenhouse API key first',
+    });
+  }
+  try {
+    const GreenhouseService = (await import('../services/greenhouse.service')).default;
+    const greenhouse = new GreenhouseService(key);
+    const ok = await greenhouse.testConnection();
+    res.json({
+      success: ok,
+      message: ok ? 'Greenhouse connected' : 'Connection failed',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Connection failed',
+    });
+  }
+});
 
 /**
  * Get available LLM providers

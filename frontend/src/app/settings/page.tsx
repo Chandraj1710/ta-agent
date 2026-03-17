@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Settings, Brain, Check, X, Loader, Zap, DollarSign, 
-  Globe, Lock, ArrowLeft
+  Globe, Lock, ArrowLeft, Briefcase
 } from 'lucide-react';
 
 interface Provider {
@@ -32,6 +32,11 @@ export default function SettingsPage() {
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
+  const [greenhouseApiKey, setGreenhouseApiKey] = useState<string>('');
+  const [greenhouseConfigured, setGreenhouseConfigured] = useState(false);
+  const [greenhouseSaving, setGreenhouseSaving] = useState(false);
+  const [greenhouseTesting, setGreenhouseTesting] = useState(false);
+  const [greenhouseTestResult, setGreenhouseTestResult] = useState<'success' | 'error' | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -41,7 +46,71 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchProviders();
     fetchCurrentSettings();
+    fetchGreenhouseStatus();
   }, []);
+
+  const fetchGreenhouseStatus = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/greenhouse`);
+      const data = await res.json();
+      if (data.success && data.data?.configured) setGreenhouseConfigured(true);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveGreenhouse = async () => {
+    if (!greenhouseApiKey.trim()) return;
+    setGreenhouseSaving(true);
+    setGreenhouseTestResult(null);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/greenhouse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: greenhouseApiKey.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGreenhouseConfigured(true);
+        alert('✅ Greenhouse API key saved! You can now refresh alerts on the dashboard.');
+      } else {
+        alert('❌ Failed to save');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('❌ Error saving');
+    } finally {
+      setGreenhouseSaving(false);
+    }
+  };
+
+  const handleTestGreenhouse = async () => {
+    const key = greenhouseApiKey.trim();
+    if (!key) {
+      alert('Enter your Greenhouse API key first');
+      return;
+    }
+    setGreenhouseTesting(true);
+    setGreenhouseTestResult(null);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/greenhouse/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: key }),
+      });
+      const data = await res.json();
+      setGreenhouseTestResult(data.success ? 'success' : 'error');
+      if (data.success) {
+        setGreenhouseConfigured(true);
+        setTimeout(() => setGreenhouseTestResult(null), 3000);
+      }
+    } catch (e) {
+      console.error(e);
+      setGreenhouseTestResult('error');
+    } finally {
+      setGreenhouseTesting(false);
+    }
+  };
 
   const fetchProviders = async () => {
     try {
@@ -191,6 +260,56 @@ export default function SettingsPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Greenhouse API Key - Required for data */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Briefcase className="w-6 h-6 text-indigo-600" />
+            Greenhouse API Key
+            {greenhouseConfigured && (
+              <span className="text-sm font-normal text-green-600">(configured)</span>
+            )}
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Required for jobs, alerts, and all TA modules. Get your key from Greenhouse: Configure → Dev Center → API Credential Management.
+          </p>
+          <div className="flex gap-4">
+            <input
+              type="password"
+              value={greenhouseApiKey}
+              onChange={(e) => setGreenhouseApiKey(e.target.value)}
+              placeholder="Enter your Greenhouse API key"
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <button
+              onClick={handleTestGreenhouse}
+              disabled={greenhouseTesting || !greenhouseApiKey.trim()}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {greenhouseTesting ? <Loader className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
+              Test
+            </button>
+            <button
+              onClick={handleSaveGreenhouse}
+              disabled={greenhouseSaving || !greenhouseApiKey.trim()}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {greenhouseSaving ? <Loader className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+              Save
+            </button>
+          </div>
+          {greenhouseTestResult && (
+            <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${
+              greenhouseTestResult === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+            }`}>
+              {greenhouseTestResult === 'success' ? (
+                <><Check className="w-5 h-5" /> Greenhouse connected!</>
+              ) : (
+                <><X className="w-5 h-5" /> Connection failed. Check your API key.</>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Info Banner */}
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-r-lg">
           <div className="flex items-start gap-3">

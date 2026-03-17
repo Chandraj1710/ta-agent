@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import GreenhouseService from '../services/greenhouse.service';
-import { db } from '../db';
+import { getGreenhouseService } from '../services/greenhouse.factory';
+import { hasDatabase, getDb } from '../db';
 import { jobs, applications } from '../db/schema';
 
 const router = Router();
-const greenhouse = new GreenhouseService();
 
 router.get('/test', async (req, res) => {
   try {
+    const greenhouse = getGreenhouseService();
     const ok = await greenhouse.testConnection();
     res.json({ success: ok, message: ok ? 'Greenhouse connected' : 'Connection failed' });
   } catch (error) {
@@ -19,7 +19,15 @@ router.get('/test', async (req, res) => {
 });
 
 router.get('/sync', async (req, res) => {
+  if (!hasDatabase()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Database required for sync. Set DATABASE_URL in .env (e.g. postgresql://postgres:postgres@localhost:5432/ta_agent)',
+    });
+  }
   try {
+    const greenhouse = getGreenhouseService();
+    const db = getDb()!;
     const [jobsData, applicationsData] = await Promise.all([
       greenhouse.getJobs('open'),
       greenhouse.getApplications(undefined, 'active'),

@@ -1,16 +1,17 @@
 /**
- * Greenhouse Harvest API v3 Service
- * Fetches jobs, applications, candidates, scorecards, and job stages
+ * Greenhouse Harvest API v1 Service
+ * Uses Basic Auth (api_key:) - matches working curl from Greenhouse docs
+ * Base: https://harvest.greenhouse.io/v1
  */
 
-const BASE_URL = 'https://harvest.greenhouse.io/v3';
-const AUTH_URL = 'https://harvest.greenhouse.io/auth/token';
+const BASE_URL = 'https://harvest.greenhouse.io/v1';
 
 export interface GreenhouseJob {
   id: number;
   name: string;
   status: string;
   department?: { id: number; name: string };
+  departments?: Array<{ id: number; name: string }>;
   created_at: string;
   updated_at: string;
 }
@@ -18,13 +19,17 @@ export interface GreenhouseJob {
 export interface GreenhouseApplication {
   id: number;
   candidate_id: number;
-  job_id: number;
+  job_id?: number;
+  jobs?: Array<{ id: number; name: string }>;
   status: string;
   current_stage?: { id: number; name: string };
   source?: { id: number; name: string };
+  credited_to?: { id: number; name: string };
   referrer?: { id: number; name: string };
-  created_at: string;
-  updated_at: string;
+  recruiter?: { id: number; name: string };
+  created_at?: string;
+  applied_at?: string;
+  updated_at?: string;
   last_activity_at?: string;
 }
 
@@ -51,47 +56,28 @@ export interface GreenhouseJobStage {
 
 export default class GreenhouseService {
   private apiKey: string;
-  private accessToken: string | null = null;
-  private tokenExpiresAt: Date | null = null;
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.GREENHOUSE_API_KEY || '';
   }
 
-  private async getToken(): Promise<string> {
-    if (this.accessToken && this.tokenExpiresAt && new Date() < this.tokenExpiresAt) {
-      return this.accessToken;
-    }
+  private getAuthHeader(): string {
     if (!this.apiKey) {
-      throw new Error('GREENHOUSE_API_KEY is not configured');
+      throw new Error('Greenhouse API key is not configured');
     }
-    const auth = Buffer.from(`${this.apiKey}:`).toString('base64');
-    const res = await fetch(AUTH_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials',
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Greenhouse auth failed: ${res.status} ${text}`);
-    }
-    const data = (await res.json()) as { access_token: string; expires_at?: string };
-    this.accessToken = data.access_token;
-    this.tokenExpiresAt = data.expires_at ? new Date(data.expires_at) : new Date(Date.now() + 3600000);
-    return this.accessToken;
+    return 'Basic ' + Buffer.from(`${this.apiKey}:`).toString('base64');
   }
 
   private async request<T>(path: string, params?: Record<string, string>): Promise<T> {
-    const token = await this.getToken();
     const url = new URL(path, BASE_URL);
     if (params) {
       Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
     }
     const res = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: this.getAuthHeader(),
+        'Content-Type': 'application/json',
+      },
     });
     if (!res.ok) {
       const text = await res.text();
@@ -121,41 +107,47 @@ export default class GreenhouseService {
   async getJobs(status?: string): Promise<GreenhouseJob[]> {
     const params: Record<string, string> = {};
     if (status) params.status = status;
-    return this.requestPaginated<GreenhouseJob>('/jobs', params);
+    const data = await this.requestPaginated<GreenhouseJob>('/jobs', params);
+    return data.map((j) => ({
+      ...j,
+      department: j.departments?.[0] ? { id: j.departments[0].id, name: j.departments[0].name } : undefined,
+    }));
   }
 
   async getApplications(jobId?: number, status?: string): Promise<GreenhouseApplication[]> {
     const params: Record<string, string> = {};
     if (jobId) params.job_id = String(jobId);
     if (status) params.status = status;
-    return this.requestPaginated<GreenhouseApplication>('/applications', params);
+    const data = await this.requestPaginated<GreenhouseApplication>('/applications', params);
+    return data.map((a) => {
+      const job = Array.isArray(a.jobs) && a.jobs[0] ? a.jobs[0] : null;
+      return {
+        ...a,
+        job_id: a.job_id ?? job?.id,
+        referrer: a.referrer ?? a.credited_to,
+      };
+    });
   }
 
   async getCandidate(id: number): Promise<GreenhouseCandidate> {
     return this.request<GreenhouseCandidate>(`/candidates/${id}`);
   }
 
-  async getScorecards(params?: { created_after?: string }): Promise<GreenhouseScorecard[]> {
-    const q: Record<string, string> = {};
-    if (params?.created_after) q.created_after = params.created_after;
-    return this.requestPaginated<GreenhouseScorecard>('/scorecards', q);
-  }
-
-  async getJobStages(jobId: number): Promise<GreenhouseJobStage[]> {
+  async getScorecards(_params?: { created_after?: string }): Promise<GreenhouseScorecard[]> {
     try {
-      const data = await this.request<{ job_stages?: GreenhouseJobStage[] } | GreenhouseJobStage[]>(`/jobs/${jobId}`);
+      const data = await this.request<GreenhouseScorecard[] | { scorecards?: GreenhouseScorecard[] }>('/scorecards');
       if (Array.isArray(data)) return data;
-      return (data as { job_stages?: GreenhouseJobStage[] }).job_stages || [];
+      return (data as { scorecards?: GreenhouseScorecard[] }).scorecards || [];
     } catch {
       return [];
     }
   }
 
-  async getScheduledInterviews(applicationId?: number): Promise<Array<{ id: number; application_id: number; start: string; interviewers?: Array<{ id: number; name: string }> }>> {
+  async getJobStages(jobId: number): Promise<GreenhouseJobStage[]> {
     try {
-      const path = applicationId ? `/applications/${applicationId}/scheduled_interviews` : '/scheduled_interviews';
-      const data = await this.request<Array<{ id: number; application_id: number; start: string; interviewers?: Array<{ id: number; name: string }> }>>(path);
-      return Array.isArray(data) ? data : [];
+      const data = await this.request<GreenhouseJobStage[] | { stages?: GreenhouseJobStage[] }>(`/jobs/${jobId}/stages`);
+      if (Array.isArray(data)) return data;
+      return (data as { stages?: GreenhouseJobStage[] }).stages || [];
     } catch {
       return [];
     }
@@ -163,8 +155,7 @@ export default class GreenhouseService {
 
   async testConnection(): Promise<boolean> {
     try {
-      await this.getToken();
-      await this.request<unknown>('/jobs', { per_page: '1' });
+      await this.request<unknown>('/applications', { per_page: '1', page: '1' });
       return true;
     } catch {
       return false;
