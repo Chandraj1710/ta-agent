@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -14,6 +14,7 @@ import {
   Briefcase,
   Globe,
   Lock,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +33,15 @@ interface Provider {
   freeOption: boolean;
 }
 
+/** Fallback when backend is unavailable - allows selecting models offline */
+const DEFAULT_PROVIDERS: Provider[] = [
+  { id: 'openai', name: 'OpenAI', models: ['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo'], pricing: 'Paid', speed: 'Medium', quality: 'Excellent', requiresApiKey: true, freeOption: false },
+  { id: 'gemini', name: 'Google Gemini', models: ['gemini-pro', 'gemini-pro-vision'], pricing: 'Free tier available', speed: 'Fast', quality: 'Excellent', requiresApiKey: true, freeOption: true },
+  { id: 'claude', name: 'Anthropic Claude', models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'], pricing: 'Free tier available', speed: 'Fast', quality: 'Excellent', requiresApiKey: true, freeOption: true },
+  { id: 'groq', name: 'Groq', models: ['mixtral-8x7b', 'llama2-70b'], pricing: 'Free', speed: 'Very Fast', quality: 'Good', requiresApiKey: true, freeOption: true },
+  { id: 'ollama', name: 'Ollama (Local)', models: ['llama2', 'mistral', 'codellama'], pricing: 'Free (Local)', speed: 'Depends on hardware', quality: 'Good', requiresApiKey: false, freeOption: true },
+];
+
 interface LLMSettings {
   provider: string;
   model: string;
@@ -41,9 +51,9 @@ interface LLMSettings {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [providers, setProviders] = useState<Provider[]>(DEFAULT_PROVIDERS);
+  const [selectedProvider, setSelectedProvider] = useState<string>('openai');
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4-turbo-preview');
   const [apiKey, setApiKey] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.7);
   const [greenhouseApiKey, setGreenhouseApiKey] = useState<string>('');
@@ -56,11 +66,35 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [currentSettings, setCurrentSettings] = useState<LLMSettings | null>(null);
+  const [providersError, setProvidersError] = useState<string | null>(null);
+  const modelSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchProviders();
-    fetchCurrentSettings();
     fetchGreenhouseStatus();
+
+    // Show page immediately with defaults; fetch saved settings in background
+    setLoading(false);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/settings/llm`, {
+      signal: controller.signal,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setCurrentSettings(data.data);
+          setSelectedProvider(data.data.provider);
+          setSelectedModel(data.data.model);
+          setTemperature(data.data.temperature ?? 0.7);
+        }
+      })
+      .catch(() => {
+        // Backend offline - keep defaults
+      })
+      .finally(() => clearTimeout(timeoutId));
   }, []);
 
   const fetchGreenhouseStatus = async () => {
@@ -128,28 +162,33 @@ export default function SettingsPage() {
 
   const fetchProviders = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm/providers`);
+      setProvidersError(null);
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseUrl}/api/settings/llm/providers`);
       const data = await response.json();
-      if (data.success) setProviders(data.data);
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setProviders(data.data);
+      }
+      // Keep DEFAULT_PROVIDERS when backend fails or returns empty
     } catch (error) {
       console.error('Error fetching providers:', error);
+      setProvidersError('Backend offline — you can still choose providers. Save/Test will work when backend is running.');
     }
   };
 
   const fetchCurrentSettings = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings/llm`);
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseUrl}/api/settings/llm`);
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.data) {
         setCurrentSettings(data.data);
         setSelectedProvider(data.data.provider);
         setSelectedModel(data.data.model);
-        setTemperature(data.data.temperature || 0.7);
+        setTemperature(data.data.temperature ?? 0.7);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -160,6 +199,8 @@ export default function SettingsPage() {
       setSelectedModel(provider.models[0]);
     }
     setTestResult(null);
+    // Scroll model section into view
+    setTimeout(() => modelSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
   };
 
   const handleSave = async () => {
@@ -266,6 +307,190 @@ export default function SettingsPage() {
           transition={{ duration: 0.3, delay: 0.05 }}
           className="space-y-6"
         >
+          {/* LLM Provider Selection - First so it's immediately visible */}
+          <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
+            <CardHeader>
+              <CardTitle>Select AI Provider</CardTitle>
+              <CardDescription>Choose your preferred LLM provider and model. Click a card to select.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {providersError && (
+                <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 border border-amber-200">
+                  {providersError}
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchProviders()}>
+                    Retry
+                  </Button>
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {providers.map((provider) => {
+                  const isSelected = selectedProvider === provider.id;
+                  return (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      onClick={() => handleProviderChange(provider.id)}
+                      className={`flex cursor-pointer flex-col rounded-xl border-2 p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                        isSelected
+                          ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                          : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-foreground">{provider.name}</h3>
+                          <p className="text-sm text-muted-foreground">{provider.pricing}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isSelected && (
+                            <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+                          )}
+                          {provider.freeOption && (
+                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
+                              FREE
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Zap className="h-3 w-3" /> {provider.speed}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Brain className="h-3 w-3" /> {provider.quality}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedProviderData && (
+                <div ref={modelSectionRef} className="space-y-6">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Model</label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      {selectedProviderData.models.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedProviderData.requiresApiKey && (
+                    <div>
+                      <label className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Lock className="h-4 w-4" />
+                        API Key
+                        {selectedProviderData.freeOption && (
+                          <span className="text-xs text-emerald-600">(Free tier available)</span>
+                        )}
+                      </label>
+                      <Input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder="Enter your API key"
+                        className="transition-all duration-200 focus:ring-2"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Get your API key from:{' '}
+                        {selectedProvider === 'openai' && 'platform.openai.com'}
+                        {selectedProvider === 'gemini' && 'makersuite.google.com/app/apikey'}
+                        {selectedProvider === 'claude' && 'console.anthropic.com'}
+                        {selectedProvider === 'groq' && 'console.groq.com'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">
+                      Temperature: {temperature}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={temperature}
+                      onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                      className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary"
+                    />
+                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                      <span>More Consistent</span>
+                      <span>More Creative</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentSettings && (
+                <div className="rounded-lg bg-muted/50 p-4">
+                  <h3 className="mb-2 font-medium text-foreground">Current Active Settings</h3>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p>Provider: <span className="font-medium text-foreground">{currentSettings.provider}</span></p>
+                    <p>Model: <span className="font-medium text-foreground">{currentSettings.model}</span></p>
+                    <p>Temperature: <span className="font-medium text-foreground">{currentSettings.temperature}</span></p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleTest}
+                  disabled={testing || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
+                  className="flex-1 gap-2 transition-all duration-200 hover:scale-[1.02]"
+                >
+                  {testing ? <Loader className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                  Test Connection
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || !selectedProvider || (selectedProviderData?.requiresApiKey && !apiKey)}
+                  className="flex-1 gap-2 transition-all duration-200 hover:scale-[1.02]"
+                >
+                  {saving ? <Loader className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Save Settings
+                </Button>
+              </div>
+
+              {testResult && (
+                <div
+                  className={`flex items-center gap-3 rounded-lg p-4 ${
+                    testResult === 'success'
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'bg-destructive/10 text-destructive'
+                  }`}
+                >
+                  {testResult === 'success' ? (
+                    <><Check className="h-5 w-5" /> Connection successful! LLM is working perfectly.</>
+                  ) : (
+                    <><X className="h-5 w-5" /> Connection failed. Check your API key and try again.</>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* LLM Info Banner */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-start gap-3 pt-6">
+              <Brain className="h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium text-foreground">Multiple LLM Support</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose between paid (OpenAI) and free options (Gemini, Groq, Ollama) based on your needs!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Greenhouse API */}
           <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
             <CardHeader>
@@ -344,46 +569,62 @@ export default function SettingsPage() {
           <Card className="overflow-hidden border-0 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl">
             <CardHeader>
               <CardTitle>Select AI Provider</CardTitle>
-              <CardDescription>Choose your preferred LLM provider and model</CardDescription>
+              <CardDescription>Choose your preferred LLM provider and model. Click a card to select.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {providersError && (
+                <div className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
+                  {providersError}
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchProviders()}>
+                    Retry
+                  </Button>
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {providers.map((provider) => (
-                  <button
-                    key={provider.id}
-                    type="button"
-                    onClick={() => handleProviderChange(provider.id)}
-                    className={`flex flex-col rounded-xl border-2 p-4 text-left transition-all duration-200 hover:scale-[1.01] ${
-                      selectedProvider === provider.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/30'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-foreground">{provider.name}</h3>
-                        <p className="text-sm text-muted-foreground">{provider.pricing}</p>
+                {providers.map((provider) => {
+                  const isSelected = selectedProvider === provider.id;
+                  return (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      onClick={() => handleProviderChange(provider.id)}
+                      className={`flex cursor-pointer flex-col rounded-xl border-2 p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                        isSelected
+                          ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                          : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-foreground">{provider.name}</h3>
+                          <p className="text-sm text-muted-foreground">{provider.pricing}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isSelected && (
+                            <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+                          )}
+                          {provider.freeOption && (
+                            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
+                              FREE
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      {provider.freeOption && (
-                        <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
-                          FREE
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Zap className="h-3 w-3" /> {provider.speed}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Brain className="h-3 w-3" /> {provider.quality}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                      <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Zap className="h-3 w-3" /> {provider.speed}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Brain className="h-3 w-3" /> {provider.quality}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               {selectedProviderData && (
-                <>
+                <div ref={modelSectionRef} className="space-y-6">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-foreground">Model</label>
                     <select
@@ -443,7 +684,7 @@ export default function SettingsPage() {
                       <span>More Creative</span>
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {currentSettings && (
